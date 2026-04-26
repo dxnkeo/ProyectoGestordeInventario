@@ -16,3 +16,10 @@ Este proyecto es un sistema de gestión de inventario para controlar stock en m�
 5. Inicia: `npm run dev`.
 
 Para más detalles, consulta el **[README de Backend](./backend/README.md)**.
+
+## 🚀 Inicio Rápido (Frontend)
+
+1. Ve a la carpeta `frontend`.
+2. Instala dependencias: `npm install`.
+3. Inicia el servidor de desarrollo: `npm run dev`.
+4. Abre en el navegador la url http://localhost:5173.
