@@ -1,6 +1,6 @@
 import type { CreateLocationDto, Location } from "../types/location";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "http://localhost:3000/api/v1";
 
 export const createLocation = async (dto: CreateLocationDto): Promise<Location> => {
   const response = await fetch(`${API_BASE}/locations`, {
@@ -21,7 +21,7 @@ export const createLocation = async (dto: CreateLocationDto): Promise<Location> 
 };
 
 export const getAllLocations = async (): Promise<Location[]> => {
-  const response = await fetch(`${API_BASE}/v1/locations`, {
+  const response = await fetch(`${API_BASE}/locations`, {
     method: "GET",
   });
 

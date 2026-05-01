@@ -1,9 +1,9 @@
 import type { Product } from "../types/product";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "http://localhost:3000/api/v1";
 
 export const getAllProducts = async (): Promise<Product[]> => {
-  const response = await fetch(`${API_BASE}/v1/products`, {
+  const response = await fetch(`${API_BASE}/products`, {
     method: "GET",
   });
 
