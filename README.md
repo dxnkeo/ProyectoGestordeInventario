@@ -9,17 +9,18 @@ Este proyecto es un sistema de gestión de inventario para controlar stock en m�
 
 ## 🚀 Inicio Rápido (Backend)
 
-1. Ve a la carpeta `backend`.
-2. Instala dependencias: `npm install`.
+1. Ve a la carpeta `backend`
+2. Instala dependencias: `pnpm install`.
 3. Configura el `.env` con tu base de datos.
-4. Ejecuta migraciones y seed: `npx prisma migrate dev` y `npm run db:seed`.
-5. Inicia: `npm run dev`.
+4. Crea cliente Prisma: `pnpm prisma generate`
+4. Ejecuta migraciones y seed: `pnpm prisma migrate dev` y `pnpm run db:seed`.
+5. Inicia: `pnpm run dev`.
 
 Para más detalles, consulta el **[README de Backend](./backend/README.md)**.
 
 ## 🚀 Inicio Rápido (Frontend)
 
 1. Ve a la carpeta `frontend`.
-2. Instala dependencias: `npm install`.
-3. Inicia el servidor de desarrollo: `npm run dev`.
+2. Instala dependencias: `pnpm install`.
+3. Inicia el servidor de desarrollo: `pnpm run dev`.
 4. Abre en el navegador la url http://localhost:5173.

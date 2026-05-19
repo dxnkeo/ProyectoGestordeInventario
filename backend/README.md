@@ -14,7 +14,7 @@ Sigue estos pasos para configurar el proyecto en tu entorno local:
 ### 1. Clonar e Instalar dependencias
 Desde la carpeta `backend`, ejecuta:
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Configurar variables de entorno
@@ -34,14 +34,14 @@ Ejecuta las migraciones de Prisma para crear las tablas y luego carga los datos 
 npx prisma migrate dev --name init
 
 # Cargar datos mock (ubicaciones, productos y stock inicial)
-npm run db:seed
+pnpm run db:seed
 ```
 
 ## 🏃 Ejecución
 
 Para iniciar el servidor en modo desarrollo con recarga automática:
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 El servidor estará disponible en: `http://localhost:3000`
