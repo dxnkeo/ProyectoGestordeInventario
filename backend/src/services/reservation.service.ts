@@ -34,9 +34,34 @@ export const createTemporaryReservation = async (data: {
     );
   }
 
-  // 3. validar si hay stock físico disponible
+    // 3. VERIFICACIÓN DE LÍMITE DE DESPACHO DIARIO
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
 
-  // 4. Crear la reserva temporal ("PENDING")
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const todayReservations = await prisma.reservation.aggregate({
+    _sum: { quantity: true },
+    where: {
+      locationId: data.locationId,
+      createdAt: { gte: startOfDay, lte: endOfDay },
+      status: { not: "CANCELLED" },
+    },
+  });
+
+  const currentDailyTotal = todayReservations._sum.quantity || 0;
+
+  if (currentDailyTotal + data.quantity > location.maxDailyDispatch) {
+    throw new AppError(
+      `No se puede reservar: La ubicación superaría su límite de despacho (${currentDailyTotal}/${location.maxDailyDispatch} artículos reservados hoy).`,
+      400
+    );
+  }
+
+  // 4. validar si hay stock físico disponible
+
+  // 5. Crear la reserva temporal ("PENDING")
   const expires = new Date();
   expires.setMinutes(expires.getMinutes() + 15); 
 

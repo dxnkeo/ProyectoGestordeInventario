@@ -23,6 +23,7 @@ model Location {
   createdAt DateTime @default(now())
   dispatchStart String @default("8:00")
   dispatchEnd String @default("18:00")
+  maxDailyDispatch Int @default(100) // Capacidad máxima de despacho diario
 
   // Relaciones
   stocks    Stock[]
