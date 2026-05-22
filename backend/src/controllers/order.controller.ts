@@ -1,0 +1,90 @@
+// ============================================================
+// Controlador: Orders
+// Delega toda la lógica al servicio; solo maneja HTTP
+// ============================================================
+
+import { Request, Response, NextFunction } from "express";
+import * as orderService from "../services/order.service";
+import { sendSuccess } from "../utils/response";
+import { CreateOrderDto } from "../utils/types";
+
+/**
+ * POST /orders
+ * Crea un pedido en estado PENDING con sus ítems.
+ */
+export const createOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const dto: CreateOrderDto = {
+      customerName: req.body.customerName,
+      items: req.body.items,
+    };
+
+    const order = await orderService.createOrder(dto);
+
+    sendSuccess(res, order, "Pedido creado exitosamente.", 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /orders
+ * Lista todos los pedidos con sus ítems.
+ */
+export const getOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const orders = await orderService.getAllOrders();
+
+    sendSuccess(res, orders, `Se encontraron ${orders.length} pedidos.`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /orders/:id
+ * Retorna el detalle completo de un pedido.
+ */
+export const getOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const order = await orderService.getOrderById(req.params.id);
+
+    sendSuccess(res, order, "Pedido encontrado.");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /orders/:id/status
+ * Transiciona el estado del pedido.
+ * Body: { status: "RESERVED" | "READY_FOR_DISPATCH" | ... }
+ */
+export const updateOrderStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const order = await orderService.transitionOrder(
+      req.params.id,
+      req.body.status
+    );
+
+    sendSuccess(res, order, `Estado actualizado a "${req.body.status}".`);
+  } catch (error) {
+    next(error);
+  }
+};
