@@ -91,6 +91,27 @@ export const getOrder = async (
 };
 
 /**
+ * POST /orders/:id/dispatch-schedule
+ * Crea un DispatchSchedule para el pedido.
+ */
+export const createDispatchSchedule = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const schedule = await orderService.createDispatchSchedule(String(req.params.id), {
+      scheduleDate: req.body.scheduleDate,
+      priority: req.body.priority,
+    });
+
+    sendSuccess(res, schedule, "DispatchSchedule creado exitosamente.", 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * PATCH /orders/:id/status
  * Transiciona el estado del pedido.
  * Body: { status: "RESERVED" | "READY_FOR_DISPATCH" | ... }

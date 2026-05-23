@@ -104,7 +104,8 @@ model Order {
   updatedAt    DateTime    @updatedAt
 
   // Relaciones
-  items        OrderItem[]
+  items             OrderItem[]
+  dispatchSchedules DispatchSchedule[]
 
   @@map("orders")
 }
@@ -166,14 +167,19 @@ enum Priority {
 }
 
 model DispatchSchedule {
-  scheduleId Int @id @default(autoincrement())
-  orderId Int
+  scheduleId   Int      @id @default(autoincrement())
+  orderId      String
   scheduleDate DateTime
-  startTime String
-  endTime String
-  status String
-  priority String @default("NORMAL")
-  createdAt DateTime @default(now())
+  startTime    String
+  endTime      String
+  status       String
+  priority     String   @default("NORMAL")
+  createdAt    DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("dispatch_schedules")
+}
 
 // ============================================================
 // Enum: OrderStatus

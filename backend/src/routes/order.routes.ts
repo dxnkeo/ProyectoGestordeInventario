@@ -79,6 +79,20 @@ const readyForDispatchRules = [
     .isISO8601().withMessage("dateTo debe ser una fecha ISO 8601 válida (ej: 2024-01-15)."),
 ];
 
+const createDispatchScheduleRules = [
+  param("id")
+    .isUUID().withMessage("El ID del pedido debe ser un UUID válido."),
+
+  body("scheduleDate")
+    .notEmpty().withMessage("La fecha de despacho es requerida.")
+    .isISO8601().withMessage("scheduleDate debe ser una fecha ISO 8601 válida (ej: 2026-05-23)."),
+
+  body("priority")
+    .optional()
+    .isIn(["LOW", "NORMAL", "HIGH", "CRITICAL"])
+    .withMessage("priority debe ser LOW, NORMAL, HIGH o CRITICAL."),
+];
+
 // ── Rutas ─────────────────────────────────────────────────────────
 
 /**
@@ -251,11 +265,67 @@ const readyForDispatchRules = [
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/**
+ * @openapi
+ * /orders/{id}/dispatch-schedule:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Crear un DispatchSchedule para un pedido
+ *     description: |
+ *       Asocia un schedule de despacho a un pedido en estado READY_FOR_DISPATCH.
+ *       Requerido para poder transicionar el pedido a IN_TRANSIT.
+ *       No puede haber más de un schedule activo para el mismo pedido en la misma fecha.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [scheduleDate]
+ *             properties:
+ *               scheduleDate:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-05-23"
+ *               priority:
+ *                 type: string
+ *                 enum: [LOW, NORMAL, HIGH, CRITICAL]
+ *                 default: NORMAL
+ *     responses:
+ *       201:
+ *         description: DispatchSchedule creado exitosamente
+ *       400:
+ *         description: Pedido no está en READY_FOR_DISPATCH o fecha inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Pedido no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Ya existe un DispatchSchedule activo para esa fecha
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.post("/", createOrderRules, validateRequest, orderController.createOrder);
 router.get("/", orderController.getOrders);
 // Debe estar antes de /:id para evitar que Express interprete "ready-for-dispatch" como un id
 router.get("/ready-for-dispatch", readyForDispatchRules, validateRequest, orderController.getReadyForDispatch);
 router.get("/:id", orderIdRule, validateRequest, orderController.getOrder);
 router.patch("/:id/status", updateStatusRules, validateRequest, orderController.updateOrderStatus);
+router.post("/:id/dispatch-schedule", createDispatchScheduleRules, validateRequest, orderController.createDispatchSchedule);
 
 export default router;
