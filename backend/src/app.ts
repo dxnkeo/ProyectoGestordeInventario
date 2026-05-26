@@ -19,6 +19,8 @@ import reservationRoutes, {
 } from "./routes/reservation.routes";
 import externalRoutes from "./routes/external.routes";
 import orderRoutes from "./routes/order.routes";
+import routeRoutes from "./routes/route.routes";
+import logisticsRoutes from "./routes/logistics.routes";
 
 // Importar middleware de errores (siempre al final)
 import { errorHandler } from "./middlewares/errorHandler";
@@ -45,6 +47,7 @@ app.get("/", (_req: Request, res: Response) => {
       releaseReservation: "/api/v1/release-reservation",
       confirmDelivery: "/api/v1/external/reservations/:id/confirm-delivery",
       orders: "/api/v1/orders",
+      routes: "/api/v1/routes",
     },
     timestamp: new Date().toISOString(),
   });
@@ -65,6 +68,8 @@ app.use(`${API_PREFIX}/reservations`, reservationRoutes);
 app.use(`${API_PREFIX}/release-reservation`, releaseReservationRouter);
 app.use(`${API_PREFIX}/external`, externalRoutes);
 app.use(`${API_PREFIX}/orders`, orderRoutes);
+app.use(`${API_PREFIX}/routes`, routeRoutes);
+app.use(`${API_PREFIX}/logistics`, logisticsRoutes);
 
 // ── Documentación Swagger UI ────────────────────────────────────
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
