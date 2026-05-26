@@ -183,7 +183,7 @@ export const StockUbicationPage = () => {
                       <div className="su-num-divider" />
                       <div className="su-num">
                         <span className="su-num-value" style={{ color: col!.text }}>{available}</span>
-                        <span className="su-num-label">Disponible</span>
+                        <span className="su-num-label">Espacio Libre</span>
                       </div>
                       <div className="su-num-divider" />
                       <div className="su-num">
