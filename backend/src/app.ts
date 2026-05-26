@@ -20,6 +20,7 @@ import reservationRoutes, {
 import externalRoutes from "./routes/external.routes";
 import orderRoutes from "./routes/order.routes";
 import routeRoutes from "./routes/route.routes";
+import logisticsRoutes from "./routes/logistics.routes";
 
 // Importar middleware de errores (siempre al final)
 import { errorHandler } from "./middlewares/errorHandler";
@@ -68,6 +69,7 @@ app.use(`${API_PREFIX}/release-reservation`, releaseReservationRouter);
 app.use(`${API_PREFIX}/external`, externalRoutes);
 app.use(`${API_PREFIX}/orders`, orderRoutes);
 app.use(`${API_PREFIX}/routes`, routeRoutes);
+app.use(`${API_PREFIX}/logistics`, logisticsRoutes);
 
 // ── Documentación Swagger UI ────────────────────────────────────
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

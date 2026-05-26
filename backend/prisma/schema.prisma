@@ -203,6 +203,7 @@ enum RouteStatus {
   OPEN       // Ruta abierta, aceptando órdenes
   DISPATCHED // Ruta despachada (todas las órdenes en tránsito)
   CANCELLED  // Ruta cancelada (órdenes liberadas de vuelta a READY_FOR_DISPATCH)
+  COMPLETED  // Todas las órdenes entregadas (estado terminal)
 }
 
 // ============================================================
