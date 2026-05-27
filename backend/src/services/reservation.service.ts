@@ -1,4 +1,4 @@
-// ============================================================
+q¿// ============================================================
 // Servicio: Reservations (Reservas de Stock)
 // SCRUM-20: cancelación + liberación en un paso
 // SCRUM-33: confirmación de entrega → estado SOLD + movimiento OUT
