@@ -22,10 +22,10 @@ import orderRoutes from "./routes/order.routes";
 import routeRoutes from "./routes/route.routes";
 import logisticsRoutes from "./routes/logistics.routes";
 
-// Importar middleware de errores (siempre al final)
+// Importar middleware de errores (siempre al final)zr
 import { errorHandler } from "./middlewares/errorHandler";
 
-const app: Application = express();
+const app: express.Application = express();
 
 // ── Middlewares Globales ────────────────────────────────────────
 app.use(cors());                                    // Habilitar CORS

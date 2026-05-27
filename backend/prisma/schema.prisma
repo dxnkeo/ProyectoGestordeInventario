@@ -23,6 +23,7 @@ model Location {
   createdAt DateTime @default(now())
   dispatchStart String @default("8:00")
   dispatchEnd String @default("18:00")
+  maxDailyDispatch Int @default(100) // Capacidad máxima de despacho diario
 
   // Relaciones
   stocks    Stock[]
@@ -140,7 +141,7 @@ enum MovementType {
 }
 
 enum ReservationStatus {
-  ACTIVE   // Bloquea stock disponible
+  PENDING   // Bloquea stock disponible
   RELEASED // Cancelada y liberada (stock disponible restaurado)
   SOLD     // Entrega confirmada por Proyecto 2 — stock físico descontado
   EXPIRED  // Reserva vencida (TTL) — pendiente de job automático
@@ -152,7 +153,7 @@ model Reservation {
   sku           String
   locationId    String
   quantity      Int
-  status        ReservationStatus @default(ACTIVE)
+  status String @default("PENDING") // PENDING, RELEASED, SOLD, EXPIRED
   createdAt     DateTime          @default(now())
   expiresAt     DateTime
   releasedAt    DateTime?
