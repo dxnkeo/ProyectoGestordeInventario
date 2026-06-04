@@ -8,7 +8,9 @@ import { DispachPage } from "../pages/DispatchPage";
 export const AppRouter = () => {
   return (
     <Routes>
-      <Route path="/" element={<h1 style={{ textAlign: "center" }}>Proyecto Inventario</h1>} />
+      <Route path="/" element={<StockPage />} />
+      <Route path="/Stock" element={<StockPage />} />
+      <Route path="/HistorialMovimientos" element={<MovementsHistoryPage />} />
       <Route path="/RegistrarUbicaciones" element={<CreateLocationPage />} />
       <Route path="/RegistrarMovimientos" element={<CreateMovementPage />} />
       <Route path="/Reservas" element={<ReservationsPage />} />

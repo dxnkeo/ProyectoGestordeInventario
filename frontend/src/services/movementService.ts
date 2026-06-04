@@ -19,3 +19,14 @@ export const createMovement = async (dto: CreateMovementDto): Promise<Movement> 
   const data = await response.json();
   return data.data;
 };
+
+export const getAllMovements = async (): Promise<Movement[]> => {
+  const response = await fetch(`${API_BASE}/movements`);
+
+  if (!response.ok) {
+    throw new Error("Error al obtener el historial de movimientos");
+  }
+
+  const data = await response.json();
+  return data.data;
+};
