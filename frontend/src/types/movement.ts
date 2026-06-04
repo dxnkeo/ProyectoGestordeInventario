@@ -7,7 +7,11 @@ export interface Movement {
   type: MovementType;
   quantity: number;
   note?: string;
+  reservationId?: number | null;
   createdAt: string;
+  // Campos enriquecidos presentes en GET /movements
+  product?: { id: string; name: string; sku: string };
+  location?: { id: string; name: string; type: string };
 }
 
 export interface CreateMovementDto {
