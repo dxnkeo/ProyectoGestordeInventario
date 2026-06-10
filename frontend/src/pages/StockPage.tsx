@@ -6,12 +6,13 @@ import type { Location } from "../types/location";
 
 const CRITICAL_THRESHOLD = 5;
 
-const getLevelInfo = (stockDisponible: number, quantity: number) => {
+const getLevelInfo = (stockDisponible: number, quantity: number, minStock: number) => {
+  const threshold = minStock > 0 ? minStock : CRITICAL_THRESHOLD;
   if (stockDisponible <= 0)
     return { label: "Sin stock", color: "#c62828", bg: "#ffebee", bar: "#ef5350", pct: 0 };
-  if (stockDisponible <= CRITICAL_THRESHOLD)
+  if (stockDisponible <= threshold)
     return { label: "Crítico", color: "#e65100", bg: "#fff3e0", bar: "#ff7043", pct: Math.min(100, (stockDisponible / (quantity || 1)) * 100) };
-  if (stockDisponible <= 20)
+  if (stockDisponible <= threshold * 2)
     return { label: "Bajo", color: "#f57f17", bg: "#fffde7", bar: "#ffd54f", pct: Math.min(100, (stockDisponible / (quantity || 1)) * 100) };
   return { label: "Normal", color: "#2e7d32", bg: "#e8f5e9", bar: "#66bb6a", pct: Math.min(100, (stockDisponible / (quantity || 1)) * 100) };
 };
@@ -187,7 +188,11 @@ export const StockPage = () => {
             </thead>
             <tbody>
               {filtered.map((item, idx) => {
-                const level = getLevelInfo(item.stockDisponible, item.quantity);
+                const level = getLevelInfo(
+                  item.stockDisponible,
+                  item.quantity,
+                  item.product?.minStock ?? CRITICAL_THRESHOLD
+                );
                 return (
                   <tr
                     key={item.id}

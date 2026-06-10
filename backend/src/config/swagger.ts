@@ -7,6 +7,13 @@
 import swaggerJsdoc from "swagger-jsdoc";
 import path from "path";
 
+/** swagger-jsdoc no resuelve globs con backslashes en Windows */
+const toPosix = (...segments: string[]) =>
+  path.join(...segments).split(path.sep).join("/");
+
+const routesGlob = `${toPosix(__dirname, "..", "routes")}/**/*.routes.{ts,js}`;
+const docsGlob = `${toPosix(__dirname, "..", "docs")}/openapi.paths.yaml`;
+
 const options: swaggerJsdoc.Options = {
   definition: {
     openapi: "3.0.0",
@@ -23,7 +30,30 @@ const options: swaggerJsdoc.Options = {
         description: "Servidor de desarrollo",
       },
     ],
+    tags: [
+      { name: "Products", description: "Catálogo de productos" },
+      { name: "Locations", description: "Bodegas, tiendas y centros de distribución" },
+      { name: "Stock", description: "Consulta de inventario" },
+      { name: "Movements", description: "Entradas, salidas y transferencias" },
+      { name: "Reservations", description: "Reservas de stock (integración Grupo 3)" },
+      { name: "External", description: "Integraciones externas (requiere API Key)" },
+      { name: "Orders", description: "Pedidos internos" },
+      { name: "Routes", description: "Rutas logísticas" },
+      { name: "Logistics", description: "Despacho y entregas" },
+      { name: "Alerts", description: "Alertas de stock crítico" },
+      { name: "Replenishment", description: "Proveedores y órdenes de reposición" },
+      { name: "Sync", description: "Sincronización entre almacenes" },
+      { name: "Picking", description: "Listas de picking por lotes" },
+    ],
     components: {
+      securitySchemes: {
+        ApiKeyAuth: {
+          type: "apiKey",
+          in: "header",
+          name: "X-Api-Key",
+          description: "Clave definida en EXTERNAL_API_KEY del backend",
+        },
+      },
       schemas: {
         // ── Producto ───────────────────────────────────────────
         Product: {
@@ -59,7 +89,7 @@ const options: swaggerJsdoc.Options = {
             id: { type: "string", format: "uuid" },
             productId: { type: "string", format: "uuid" },
             locationId: { type: "string", format: "uuid" },
-            type: { type: "string", enum: ["IN", "OUT"], example: "IN" },
+            type: { type: "string", enum: ["IN", "OUT", "TRANSFER", "RETURN"], example: "IN" },
             quantity: { type: "integer", example: 50 },
             note: { type: "string", nullable: true, example: "Reposición semanal" },
             createdAt: { type: "string", format: "date-time" },
@@ -113,11 +143,7 @@ const options: swaggerJsdoc.Options = {
       },
     },
   },
-  // Escanea los archivos de rutas para extraer las anotaciones @openapi
-  apis: [
-    path.join(process.cwd(), "src/routes/**/*.routes.ts"),
-    path.join(process.cwd(), "src/routes/**/*.routes.js"),
-  ],
+  apis: [routesGlob, docsGlob],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);

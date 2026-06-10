@@ -1,0 +1,553 @@
+# Endpoints adicionales documentados para Swagger UI
+# Las rutas de products, locations y orders están en *.routes.ts
+
+/stock:
+  get:
+    tags: [Stock]
+    summary: Listar todo el inventario
+    description: Retorna stock por producto/ubicación con quantity, reserved y stockDisponible.
+    responses:
+      "200":
+        description: Lista de registros de stock
+
+/stock/suggest-source/{productId}:
+  get:
+    tags: [Stock]
+    summary: Sugerir ubicación fuente por prioridad
+    parameters:
+      - in: path
+        name: productId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: quantity
+        schema:
+          type: integer
+          default: 1
+    responses:
+      "200":
+        description: Ubicaciones ordenadas por prioridad con stock suficiente
+
+/stock/{locationId}:
+  get:
+    tags: [Stock]
+    summary: Stock de una ubicación
+    parameters:
+      - in: path
+        name: locationId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Stock de la ubicación
+      "404":
+        description: Ubicación no encontrada
+
+/movements:
+  get:
+    tags: [Movements]
+    summary: Historial de movimientos
+    responses:
+      "200":
+        description: Lista de movimientos IN/OUT/TRANSFER
+  post:
+    tags: [Movements]
+    summary: Registrar entrada o salida
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [productId, locationId, type, quantity]
+            properties:
+              productId:
+                type: string
+                format: uuid
+              locationId:
+                type: string
+                format: uuid
+              type:
+                type: string
+                enum: [IN, OUT]
+              quantity:
+                type: integer
+                minimum: 1
+              note:
+                type: string
+    responses:
+      "201":
+        description: Movimiento registrado
+      "422":
+        description: Stock insuficiente o regla de negocio violada
+
+/movements/transfer:
+  post:
+    tags: [Movements]
+    summary: Transferir stock entre ubicaciones
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [productId, sourceLocationId, destinationLocationId, quantity]
+            properties:
+              productId:
+                type: string
+                format: uuid
+              sourceLocationId:
+                type: string
+                format: uuid
+              destinationLocationId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              note:
+                type: string
+    responses:
+      "201":
+        description: Transferencia ejecutada
+
+/reservations:
+  get:
+    tags: [Reservations]
+    summary: Listar reservas
+    parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [ACTIVE, RELEASED, SOLD, EXPIRED]
+    responses:
+      "200":
+        description: Lista de reservas
+  post:
+    tags: [Reservations]
+    summary: Crear reserva de stock
+    description: Usado por Grupo 3 (Pedidos) al confirmar un pedido.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [orderId, sku, locationId, quantity]
+            properties:
+              orderId:
+                type: integer
+                example: 1001
+              sku:
+                type: string
+                example: DELL-INS-15-001
+              locationId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              expiresAt:
+                type: string
+                format: date-time
+    responses:
+      "201":
+        description: Reserva creada
+      "400":
+        description: Stock insuficiente o fuera de horario
+
+/release-reservation:
+  post:
+    tags: [Reservations]
+    summary: Liberar/cancelar reserva
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [reservationId]
+            properties:
+              reservationId:
+                type: integer
+    responses:
+      "200":
+        description: Reserva liberada
+
+/external/payment-confirmed:
+  post:
+    tags: [External]
+    summary: Notificar pedido pagado (SCRUM-31)
+    security:
+      - ApiKeyAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [reservationId]
+            properties:
+              reservationId:
+                type: integer
+              orderId:
+                type: string
+    responses:
+      "200":
+        description: Pago confirmado, stock descontado
+      "401":
+        description: API Key inválida
+      "503":
+        description: EXTERNAL_API_KEY no configurada
+
+/external/reservations/{id}/confirm-delivery:
+  patch:
+    tags: [External]
+    summary: Confirmar entrega de reserva (SCRUM-33)
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              deliveredAt:
+                type: string
+                format: date-time
+              note:
+                type: string
+    responses:
+      "200":
+        description: Entrega confirmada
+
+/alerts:
+  get:
+    tags: [Alerts]
+    summary: Listar alertas de stock crítico
+    parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [PENDING, RESOLVED, DISMISSED]
+    responses:
+      "200":
+        description: Alertas sincronizadas con el inventario actual
+
+/alerts/{id}/resolve:
+  patch:
+    tags: [Alerts]
+    summary: Marcar alerta como resuelta
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Alerta resuelta
+
+/replenishment/suppliers:
+  get:
+    tags: [Replenishment]
+    summary: Listar proveedores
+    responses:
+      "200":
+        description: Lista de proveedores
+  post:
+    tags: [Replenishment]
+    summary: Crear proveedor
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, email]
+            properties:
+              name:
+                type: string
+              email:
+                type: string
+                format: email
+              phone:
+                type: string
+    responses:
+      "201":
+        description: Proveedor creado
+
+/replenishment/replenishment:
+  get:
+    tags: [Replenishment]
+    summary: Listar órdenes de reposición
+    responses:
+      "200":
+        description: Órdenes de reposición
+  post:
+    tags: [Replenishment]
+    summary: Crear orden de reposición
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [productId, locationId, supplierId, quantity]
+            properties:
+              productId:
+                type: string
+                format: uuid
+              locationId:
+                type: string
+                format: uuid
+              supplierId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+    responses:
+      "201":
+        description: Orden creada
+
+/replenishment/replenishment/{id}/status:
+  patch:
+    tags: [Replenishment]
+    summary: Actualizar estado de orden de reposición
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                enum: [PENDING, ORDERED, RECEIVED, CANCELLED]
+    responses:
+      "200":
+        description: Estado actualizado
+
+/sync/balance:
+  get:
+    tags: [Sync]
+    summary: Analizar balance entre almacenes
+    responses:
+      "200":
+        description: Análisis EXCESS/DEFICIT/OK con transferencias sugeridas
+
+/sync/transfer:
+  post:
+    tags: [Sync]
+    summary: Ejecutar transferencia de balanceo
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [productId, sourceLocationId, destinationLocationId, quantity]
+            properties:
+              productId:
+                type: string
+                format: uuid
+              sourceLocationId:
+                type: string
+                format: uuid
+              destinationLocationId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+    responses:
+      "200":
+        description: Transferencia ejecutada
+
+/picking:
+  get:
+    tags: [Picking]
+    summary: Generar lista de picking por lotes
+    parameters:
+      - in: query
+        name: orderIds
+        required: true
+        schema:
+          type: string
+        description: IDs separados por coma
+        example: uuid1,uuid2
+    responses:
+      "200":
+        description: Lista agrupada por ubicación
+
+/routes:
+  get:
+    tags: [Routes]
+    summary: Listar rutas logísticas
+    responses:
+      "200":
+        description: Rutas registradas
+  post:
+    tags: [Routes]
+    summary: Crear ruta logística
+    responses:
+      "201":
+        description: Ruta creada
+
+/routes/{id}:
+  get:
+    tags: [Routes]
+    summary: Obtener ruta por ID
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Detalle de ruta
+  delete:
+    tags: [Routes]
+    summary: Cancelar ruta
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Ruta cancelada
+
+/routes/{id}/orders:
+  post:
+    tags: [Routes]
+    summary: Asignar pedidos a ruta
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Pedidos asignados
+
+/routes/{id}/orders/{orderId}:
+  delete:
+    tags: [Routes]
+    summary: Quitar pedido de ruta
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: orderId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Pedido removido
+
+/routes/{id}/dispatch:
+  post:
+    tags: [Routes]
+    summary: Despachar ruta
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Ruta despachada
+
+/logistics/routes:
+  get:
+    tags: [Logistics]
+    summary: Listar rutas (vista logística)
+    responses:
+      "200":
+        description: Rutas logísticas
+
+/logistics/routes/{id}:
+  get:
+    tags: [Logistics]
+    summary: Detalle de ruta logística
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Detalle de ruta
+
+/logistics/routes/{id}/orders/{orderId}/deliver:
+  post:
+    tags: [Logistics]
+    summary: Confirmar entrega de pedido en ruta
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: orderId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Entrega confirmada
+
+/logistics/routes/{id}/complete:
+  post:
+    tags: [Logistics]
+    summary: Completar ruta logística
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Ruta completada

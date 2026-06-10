@@ -39,6 +39,7 @@ export const AlertsPage: React.FC = () => {
   const { data: alerts = [], isLoading: loadingAlerts } = useQuery<StockAlert[]>({
     queryKey: ["alerts", "PENDING"],
     queryFn: () => getAlerts("PENDING"),
+    refetchOnMount: "always",
   });
 
   const { data: replenishments = [], isLoading: loadingOrders } = useQuery<ReplenishmentOrder[]>({

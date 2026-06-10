@@ -1,4 +1,4 @@
-export type MovementType = "IN" | "OUT";
+export type MovementType = "IN" | "OUT" | "TRANSFER" | "RETURN";
 
 export interface Movement {
   id: string;

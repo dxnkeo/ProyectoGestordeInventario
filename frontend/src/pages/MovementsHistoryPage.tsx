@@ -5,6 +5,23 @@ import { getAllMovements } from "../services/movementService";
 const TYPE_CONFIG: Record<MovementType, { label: string; color: string; bg: string; icon: string }> = {
   IN: { label: "Entrada", color: "#1b5e20", bg: "#e8f5e9", icon: "↓" },
   OUT: { label: "Salida", color: "#b71c1c", bg: "#ffebee", icon: "↑" },
+  TRANSFER: { label: "Transferencia", color: "#1565c0", bg: "#e3f2fd", icon: "↔" },
+  RETURN: { label: "Devolución", color: "#6a1b9a", bg: "#f3e5f5", icon: "↩" },
+};
+
+const DEFAULT_TYPE_CONFIG = { label: "Otro", color: "#555", bg: "#f5f5f5", icon: "•" };
+
+const getTypeConfig = (type: string) =>
+  TYPE_CONFIG[type as MovementType] ?? DEFAULT_TYPE_CONFIG;
+
+const getQuantityDisplay = (type: MovementType) => {
+  if (type === "IN" || type === "RETURN") {
+    return { prefix: "+", color: "#1b5e20" };
+  }
+  if (type === "OUT") {
+    return { prefix: "−", color: "#b71c1c" };
+  }
+  return { prefix: "↔", color: "#1565c0" };
 };
 
 const fmt = (dateStr: string) => {
@@ -73,8 +90,11 @@ export const MovementsHistoryPage = () => {
     return true;
   });
 
-  const totalIN = filtered.filter((m) => m.type === "IN").reduce((s, m) => s + m.quantity, 0);
+  const totalIN = filtered
+    .filter((m) => m.type === "IN" || m.type === "RETURN")
+    .reduce((s, m) => s + m.quantity, 0);
   const totalOUT = filtered.filter((m) => m.type === "OUT").reduce((s, m) => s + m.quantity, 0);
+  const totalTransfer = filtered.filter((m) => m.type === "TRANSFER").reduce((s, m) => s + m.quantity, 0);
 
   const handleClearFilters = () => {
     setFilterType("all");
@@ -120,6 +140,7 @@ export const MovementsHistoryPage = () => {
             { label: "Total movimientos", value: filtered.length, color: "#1565c0", bg: "#e3f2fd" },
             { label: "Entradas (uds.)", value: `+${totalIN.toLocaleString("es-CL")}`, color: "#1b5e20", bg: "#e8f5e9" },
             { label: "Salidas (uds.)", value: `−${totalOUT.toLocaleString("es-CL")}`, color: "#b71c1c", bg: "#ffebee" },
+            { label: "Transferencias (uds.)", value: totalTransfer.toLocaleString("es-CL"), color: "#1565c0", bg: "#e3f2fd" },
             { label: "Balance neto", value: (totalIN - totalOUT).toLocaleString("es-CL"), color: totalIN - totalOUT >= 0 ? "#1b5e20" : "#b71c1c", bg: totalIN - totalOUT >= 0 ? "#e8f5e9" : "#ffebee" },
           ].map((card) => (
             <div
@@ -175,6 +196,8 @@ export const MovementsHistoryPage = () => {
             <option value="all">Todos</option>
             <option value="IN">Entradas</option>
             <option value="OUT">Salidas</option>
+            <option value="TRANSFER">Transferencias</option>
+            <option value="RETURN">Devoluciones</option>
           </select>
         </div>
         <div style={{ flex: "1 1 140px" }}>
@@ -242,7 +265,8 @@ export const MovementsHistoryPage = () => {
             </thead>
             <tbody>
               {filtered.map((m, idx) => {
-                const cfg = TYPE_CONFIG[m.type];
+                const cfg = getTypeConfig(m.type);
+                const qty = getQuantityDisplay(m.type);
                 return (
                   <tr
                     key={m.id}
@@ -283,10 +307,10 @@ export const MovementsHistoryPage = () => {
                         padding: "10px 12px",
                         textAlign: "right",
                         fontWeight: 700,
-                        color: m.type === "IN" ? "#1b5e20" : "#b71c1c",
+                        color: qty.color,
                       }}
                     >
-                      {m.type === "IN" ? "+" : "−"}{m.quantity.toLocaleString("es-CL")}
+                      {qty.prefix}{m.quantity.toLocaleString("es-CL")}
                     </td>
                     <td style={{ padding: "10px 12px", color: "#666", maxWidth: "220px" }}>
                       {m.note ? (

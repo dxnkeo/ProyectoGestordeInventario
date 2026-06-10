@@ -16,6 +16,10 @@ const mockAlert = {
 };
 
 describe("alertService.findAlerts", () => {
+  beforeEach(() => {
+    prismaMock.stock.findMany.mockResolvedValue([]);
+  });
+
   it("retorna todas las alertas sin filtro", async () => {
     prismaMock.stockAlert.findMany.mockResolvedValueOnce([mockAlert] as any);
 
@@ -53,5 +57,57 @@ describe("alertService.resolveAlertById", () => {
   it("lanza NotFoundError si la alerta no existe", async () => {
     prismaMock.stockAlert.findUnique.mockResolvedValueOnce(null);
     await expect(alertService.resolveAlertById("no-existe")).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("alertService.syncCriticalAlerts", () => {
+  it("crea alerta PENDING cuando el stock físico está en o bajo el mínimo", async () => {
+    prismaMock.stock.findMany.mockResolvedValueOnce([
+      {
+        productId: "prod-1",
+        locationId: "loc-1",
+        quantity: 5,
+        product: { minStock: 5 },
+      },
+    ] as any);
+    prismaMock.stockAlert.findFirst.mockResolvedValueOnce(null);
+    prismaMock.stockAlert.create.mockResolvedValueOnce({} as any);
+
+    await alertService.syncCriticalAlerts();
+
+    expect(prismaMock.stockAlert.create).toHaveBeenCalledWith({
+      data: {
+        productId: "prod-1",
+        locationId: "loc-1",
+        currentStock: 5,
+        minStock: 5,
+        status: "PENDING",
+      },
+    });
+  });
+
+  it("resuelve alertas PENDING cuando el stock supera el mínimo", async () => {
+    prismaMock.stock.findMany.mockResolvedValueOnce([
+      {
+        productId: "prod-1",
+        locationId: "loc-1",
+        quantity: 20,
+        product: { minStock: 5 },
+      },
+    ] as any);
+    prismaMock.stockAlert.updateMany.mockResolvedValueOnce({ count: 1 });
+
+    await alertService.syncCriticalAlerts();
+
+    expect(prismaMock.stockAlert.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          productId: "prod-1",
+          locationId: "loc-1",
+          status: "PENDING",
+        },
+        data: expect.objectContaining({ status: "RESOLVED" }),
+      })
+    );
   });
 });

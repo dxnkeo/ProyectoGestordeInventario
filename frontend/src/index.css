@@ -141,6 +141,18 @@ a { text-decoration: none; color: inherit; }
   box-shadow: 0 0 0 3px rgba(60,110,113,0.15);
 }
 
+/* Inputs numéricos: sin flechas nativas (evita cambios accidentales) */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Animations */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }

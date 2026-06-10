@@ -16,7 +16,7 @@ export interface StockWithAvailability {
   quantity: number;
   reserved: number;
   stockDisponible: number;
-  product: { id: string; name: string; sku: string };
+  product: { id: string; name: string; sku: string; minStock: number };
   location: { id: string; name: string; type: string };
 }
 
@@ -25,7 +25,7 @@ const enrichStockRecord = async (stock: {
   productId: string;
   locationId: string;
   quantity: number;
-  product: { id: string; name: string; sku: string };
+  product: { id: string; name: string; sku: string; minStock: number };
   location: { id: string; name: string; type: string };
 }): Promise<StockWithAvailability> => {
   const reserved = await getActiveReservedQuantity(
@@ -166,7 +166,7 @@ export const getAllStock = async (): Promise<StockWithAvailability[]> => {
     orderBy: { quantity: "asc" },
     include: {
       product: {
-        select: { id: true, name: true, sku: true },
+        select: { id: true, name: true, sku: true, minStock: true },
       },
       location: {
         select: { id: true, name: true, type: true },
@@ -198,7 +198,7 @@ export const getStockByLocation = async (locationId: string) => {
     orderBy: { quantity: "asc" },
     include: {
       product: {
-        select: { id: true, name: true, sku: true },
+        select: { id: true, name: true, sku: true, minStock: true },
       },
       location: {
         select: { id: true, name: true, type: true },

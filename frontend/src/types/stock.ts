@@ -9,6 +9,7 @@ export interface StockItem {
     id: string;
     name: string;
     sku: string;
+    minStock?: number;
   };
   location: {
     id: string;
