@@ -15,12 +15,14 @@ export interface CreateLocationDto {
   name: string;
   type: string;
   capacity?: number;
+  priority?: number;
 }
 
 export interface UpdateLocationDto {
   name?: string;
   type?: string;
   capacity?: number | null;
+  priority?: number;
 }
 
 // ── DTOs de Producto ─────────────────────────────────────────────

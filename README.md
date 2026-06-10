@@ -25,6 +25,10 @@ ProyectoAgilEscalado/
 | 📍 Ubicaciones | CRUD con validación de capacidad y horarios de despacho |
 | 🔖 Reservas | Flujo ACTIVE → RELEASED / SOLD (SCRUM-20 / SCRUM-33) |
 | 🚚 Despacho | Integración con rutas logísticas (Proyecto 2) |
+| 🏆 Prioridad de ubicaciones | Campo `priority` (1–10) en Location; `GET /stock/suggest-source/:productId` ordena por prioridad (SCRUM-69) |
+| ⚖️ Sincronización entre almacenes | Análisis de balance y transferencias automáticas (`GET/POST /sync`) (SCRUM-68) |
+| 📋 Picking por lotes | Lista consolidada de picking agrupada por ubicación (`GET /picking`) (SCRUM-70) |
+| 💳 Pedido Pagado | Endpoint externo autenticado con API Key (`POST /external/payment-confirmed`) (SCRUM-31) |
 
 ## 🚀 Inicio Rápido
 
@@ -65,7 +69,7 @@ pnpm run dev               # http://localhost:5173
 
 ```bash
 cd backend
-npm run test               # 66 tests, 6 suites
+npm run test               # 97 tests, 10 suites
 npm run test:coverage      # cobertura 100% (statements · branches · funcs · lines)
 ```
 
@@ -74,13 +78,16 @@ npm run test:coverage      # cobertura 100% (statements · branches · funcs · 
 | Services | 37 | `movement.service.ts`, `alert.service.ts`, `replenishment.service.ts` |
 | Controllers | 18 | `alert.controller.ts`, `replenishment.controller.ts` |
 | Utils | 5 | `errors.ts` |
-| Servicios de movimientos | 6 | `movement.service.ts` (extra) |
+| Location | 12 | `location.service.ts` (priority CRUD + suggestSource) |
+| Sync | 6 | `sync.service.ts` (balance + transfer) |
+| Picking | 8 | `picking.service.ts` (batch pick list) |
+| Payment | 4 | `reservation.service.ts::processPaymentConfirmed` |
 
 ### Frontend (Vitest · jsdom)
 
 ```bash
 cd frontend
-pnpm test                  # 24 tests, 3 suites
+pnpm test                  # 38 tests, 5 suites
 pnpm test:coverage         # cobertura 100% (statements · branches · funcs · lines)
 ```
 
@@ -105,6 +112,9 @@ PostgreSQL
 - **Error Hierarchy**: `AppError → NotFoundError | ValidationError | ConflictError | BusinessRuleError`
 - **Dependency Injection**: Prisma como singleton inyectado vía módulo
 - **React Query**: caché de servidor, deduplicación de requests, estado loading/error declarativo
+- **Priority-based routing**: campo `priority` en Location (1=alta, 10=baja) para ordenar despacho y sugerencias de fuente
+- **Batch aggregation**: picking service agrupa ítems multi-orden por ubicación para optimizar el recorrido físico
+- **External API auth**: middleware `validateApiKey` protege endpoints de integración con header `X-Api-Key`
 
 ## 🗂️ Stack Tecnológico
 

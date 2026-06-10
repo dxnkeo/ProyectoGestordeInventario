@@ -11,6 +11,7 @@ const router: Router = Router();
 
 // ── Rutas ─────────────────────────────────────────────────────────
 router.get("/", stockController.getAllStock);
+router.get("/suggest-source/:productId", stockController.suggestSource);
 router.get("/:locationId", stockController.getStockByLocation);
 
 export default router;

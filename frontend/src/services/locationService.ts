@@ -20,6 +20,25 @@ export const createLocation = async (dto: CreateLocationDto): Promise<Location> 
   return data.data;
 };
 
+export const suggestSource = async (
+  productId: string,
+  quantity = 1
+): Promise<Array<{
+  location: { id: string; name: string; type: string; priority: number };
+  quantity: number;
+  reserved: number;
+  stockDisponible: number;
+  rank: number;
+}>> => {
+  const response = await fetch(`${API_BASE}/stock/suggest-source/${productId}?quantity=${quantity}`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Error al obtener sugerencias");
+  }
+  const data = await response.json();
+  return data.data;
+};
+
 export const getAllLocations = async (): Promise<Location[]> => {
   const response = await fetch(`${API_BASE}/locations`, {
     method: "GET",

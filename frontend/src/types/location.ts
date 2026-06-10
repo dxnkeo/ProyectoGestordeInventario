@@ -3,6 +3,7 @@ export interface Location {
   name: string;
   type: string;
   capacity?: number;
+  priority: number;
   createdAt: string;
   stocks?: { 
     quantity: number; 
@@ -15,6 +16,7 @@ export interface CreateLocationDto {
   name: string;
   type: string;
   capacity?: number;
+  priority?: number;
 }
 
 export type LocationType = "bodega" | "tienda" | "almacen" | "deposito" | "otro";

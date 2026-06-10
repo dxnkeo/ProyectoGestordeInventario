@@ -8,6 +8,8 @@ import { StockUbicationPage } from "../pages/StockUbicationPage";
 import { DispachPage } from "../pages/DispatchPage";
 import { TransferPage } from "../pages/TransferPage";
 import { AlertsPage } from "../pages/AlertsPage";
+import { SyncPage } from "../pages/SyncPage";
+import { PickingPage } from "../pages/PickingPage";
 
 export const AppRouter = () => {
   return (
@@ -22,6 +24,8 @@ export const AppRouter = () => {
       <Route path="/Despacho" element={<DispachPage />} />
       <Route path="/Transferir" element={<TransferPage />} />
       <Route path="/Alertas" element={<AlertsPage />} />
+      <Route path="/Sincronizacion" element={<SyncPage />} />
+      <Route path="/Picking" element={<PickingPage />} />
     </Routes>
   );
 };

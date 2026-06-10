@@ -157,7 +157,20 @@ export const StockUbicationPage = () => {
                   <span className="su-card-icon">{TYPE_ICONS[loc.type] ?? "📍"}</span>
                   <div className="su-card-title-wrap">
                     <h3 className="su-card-name">{loc.name}</h3>
-                    <span className="su-card-type">{loc.type}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span className="su-card-type">{loc.type}</span>
+                      <span
+                        title={`Prioridad de despacho: ${loc.priority ?? 5}/10`}
+                        style={{
+                          fontSize: "0.7rem", fontWeight: 700,
+                          padding: "1px 7px", borderRadius: "20px",
+                          background: (loc.priority ?? 5) <= 2 ? "#fef9c3" : (loc.priority ?? 5) <= 5 ? "#e0f2fe" : "#f3f4f6",
+                          color:      (loc.priority ?? 5) <= 2 ? "#854d0e" : (loc.priority ?? 5) <= 5 ? "#0369a1" : "#6b7280",
+                        }}
+                      >
+                        P{loc.priority ?? 5}
+                      </span>
+                    </div>
                   </div>
                   {p !== null && (
                     <span className="su-pct-badge" style={{ color: col!.text, background: col!.bg }}>

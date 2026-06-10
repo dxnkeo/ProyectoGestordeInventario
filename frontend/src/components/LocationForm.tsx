@@ -21,6 +21,7 @@ export const LocationForm = ({ onSuccess }: LocationFormProps) => {
     name: "",
     type: "bodega",
     capacity: undefined,
+    priority: 5,
   });
 
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,9 @@ export const LocationForm = ({ onSuccess }: LocationFormProps) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "capacity" && value ? parseInt(value, 10) : value,
+      [name]: (name === "capacity" || name === "priority") && value
+        ? parseInt(value, 10)
+        : value,
     }));
   };
 
@@ -44,7 +47,7 @@ export const LocationForm = ({ onSuccess }: LocationFormProps) => {
     try {
       await createLocation(formData);
       setSuccess(true);
-      setFormData({ name: "", type: "bodega", capacity: undefined });
+      setFormData({ name: "", type: "bodega", capacity: undefined, priority: 5 });
       setTimeout(() => setSuccess(false), 3000);
       onSuccess?.();
     } catch (err) {
@@ -107,6 +110,25 @@ export const LocationForm = ({ onSuccess }: LocationFormProps) => {
         </div>
         {/* hidden select to keep form valid */}
         <input type="hidden" name="type" value={formData.type} />
+      </div>
+
+      {/* Prioridad */}
+      <div className="form-group">
+        <label htmlFor="priority" className="form-label">
+          Prioridad de despacho
+          <span className="form-label-hint">1=alta · 10=baja</span>
+        </label>
+        <input
+          id="priority"
+          type="number"
+          name="priority"
+          value={formData.priority ?? 5}
+          onChange={handleChange}
+          min="1"
+          max="10"
+          className="form-input"
+          style={{ width: "100px" }}
+        />
       </div>
 
       {/* Capacidad */}

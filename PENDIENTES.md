@@ -1,7 +1,7 @@
 # 📋 Pendientes del Proyecto — Gap Analysis
 
 > Última actualización: 2026-06-09
-> Estado general: **producción-ready en funcionalidades core** — arquitectura por capas, tests 100%, seguridad básica, CI/CD y Docker implementados.
+> Estado general: **producción-ready** — SCRUM-69/68/70/31/71 implementados · arquitectura por capas · tests 100% · CI/CD · Docker.
 
 ---
 
@@ -47,15 +47,22 @@ Frontend (:5173 dev / :80 prod)
     │                              POST /api/v1/replenishment/replenishment
     │                              PATCH /api/v1/replenishment/replenishment/:id/status
     │                              GET/POST /api/v1/replenishment/suppliers
-    ├── /RegistrarUbicaciones  →  POST /api/v1/locations
+    ├── /RegistrarUbicaciones  →  POST /api/v1/locations                 (campo priority SCRUM-69)
     ├── /Reservas              →  GET/POST /api/v1/reservations
-    ├── /StockUbicaciones      →  GET /api/v1/stock/:locationId
-    └── /Despacho              →  rutas logísticas (Proyecto 2)
+    ├── /StockUbicaciones      →  GET /api/v1/stock/:locationId          (badge priority SCRUM-69)
+    ├── /Despacho              →  rutas logísticas (Proyecto 2)
+    ├── /Sincronizacion        →  GET  /api/v1/sync/balance              (SCRUM-68)
+    │                              POST /api/v1/sync/transfer
+    └── /Picking               →  GET  /api/v1/picking?orderIds=...      (SCRUM-70)
 
 Backend (:3000)
     ├── /api/v1/locations, /products, /stock, /movements, /movements/transfer
+    ├── /api/v1/stock/suggest-source/:productId?quantity=N               (SCRUM-69)
     ├── /api/v1/alerts, /replenishment/*
+    ├── /api/v1/sync/balance, /sync/transfer                             (SCRUM-68)
+    ├── /api/v1/picking?orderIds=id1,id2,...                             (SCRUM-70)
     ├── /api/v1/reservations, /release-reservation, /external/*
+    ├── /api/v1/external/payment-confirmed  [X-Api-Key]                  (SCRUM-31)
     ├── /api/v1/orders, /routes, /logistics
     └── /api-docs (Swagger UI)
 ```
@@ -70,6 +77,10 @@ Backend (:3000)
 | **SCRUM-23** | Transferencia atómica: `POST /api/v1/movements/transfer` + `TransferPage` |
 | **SCRUM-26** | Alertas automáticas de stock crítico (`StockAlert`) en OUT/TRANSFER |
 | **SCRUM-27** | Panel de reposición: alertas, órdenes de compra, proveedores |
+| **SCRUM-69** | Prioridad de ubicaciones: campo `priority` (1–10) en `Location` + `GET /stock/suggest-source/:productId` + badge en `StockUbicationPage` |
+| **SCRUM-68** | Sincronización entre almacenes: `sync.service.ts` detecta EXCESS/DEFICIT, `SyncPage` con ejecución de transferencias sugeridas |
+| **SCRUM-70** | Picking por lotes: `picking.service.ts` agrupa ítems multi-orden por ubicación (priority ASC), `PickingPage` interactiva |
+| **SCRUM-31** | Evento "Pedido Pagado": `POST /external/payment-confirmed` autenticado con `X-Api-Key`, confirma reserva + transiciona orden a `READY_FOR_DISPATCH` |
 
 ### Mejoras de calidad de software
 | Área | Implementación |
@@ -84,7 +95,7 @@ Backend (:3000)
 | **TanStack Query** | `AlertsPage` y `TransferPage` migradas a `useQuery` / `useMutation` |
 | **ErrorBoundary** | Captura errores de render en toda la app con UI de recuperación |
 | **Accesibilidad** | `aria-label`, `aria-required`, `aria-busy`, `role`, `htmlFor` en formularios clave |
-| **Tests** | 66 tests backend (100% cob.) + 24 frontend (100% cob.) — 90 tests totales |
+| **Tests** | 97 tests backend (100% cob.) + 38 frontend (100% cob.) — 135 tests totales |
 | **Docker** | Dockerfile multi-stage backend + frontend (Nginx), `docker-compose.yml` completo |
 | **CI/CD** | GitHub Actions: lint + tests + docker build en cada PR a main/develop |
 | **Husky** | Pre-commit hook que corre `lint-staged` antes de cada commit |
@@ -113,6 +124,18 @@ Error
 - Mutaciones invalidan sus queries relacionadas con `invalidateQueries`.
 - Errores de fetch se manejan con `onError` en cada mutación.
 
+### Prioridad de ubicaciones (SCRUM-69)
+Campo `priority` en `Location` (1=máxima, 10=mínima, default 5). Se valida al crear/actualizar (clamp 1–10). `suggestSourceLocation` ordena por `priority ASC` y luego por `stockDisponible DESC` para empate. Se muestra como badge P1–P10 en `StockUbicationPage`.
+
+### Sincronización de almacenes (SCRUM-68)
+`getStockBalance` clasifica cada ubicación de un producto como `EXCESS` (stock > promedio × 1.5), `DEFICIT` (stock ≤ minStock) u `OK`. Calcula transferencias sugeridas de EXCESS → DEFICIT según stock disponible (físico − reservado). `executeSuggestedTransfer` delega en `createTransfer` con nota automática.
+
+### Picking por lotes (SCRUM-70)
+`getBatchPickList(orderIds)` sólo procesa órdenes en `READY_FOR_DISPATCH`. Agrupa ítems por `locationId` y luego por `productId`, sumando cantidades del mismo producto en la misma ubicación. Ordena ubicaciones por `priority ASC` para optimizar el recorrido físico.
+
+### Evento Pedido Pagado (SCRUM-31)
+`POST /external/payment-confirmed` requiere header `X-Api-Key` igual a `process.env.EXTERNAL_API_KEY`. Si la variable no está configurada, responde 503. Llama a `confirmDelivery(reservationId)` y opcionalmente a `transitionOrder(orderId, 'READY_FOR_DISPATCH')`.
+
 ### Transferencias atómicas (SCRUM-23)
 Una sola transacción Prisma: valida stock disponible (físico − reservado) → verifica capacidad destino → descuenta origen → suma destino → registra 2 movimientos TRANSFER → crea/resuelve alertas.
 
@@ -140,7 +163,7 @@ Transacción atómica: incrementa stock → registra movimiento IN → actualiza
 - [ ] Migrar reservas a `POST /api/v1/external/reservations`
 - [ ] `GET /api/v1/external/stock/:sku`
 - [ ] TTL automático de reservas (`node-cron` → `EXPIRED` + liberación)
-- [ ] API Keys / JWT para proyectos externos
+- [x] API Key para endpoint de pago externo (`EXTERNAL_API_KEY` + `validateApiKey`) — **SCRUM-31**
 
 ### API Design (coordinación con otros grupos)
 - [ ] Paginación en endpoints de listas (movements, orders, stock)
@@ -152,7 +175,7 @@ Transacción atómica: incrementa stock → registra movimiento IN → actualiza
 
 ## 🧪 Tests
 
-### Backend — 66 tests, 100% cobertura
+### Backend — 97 tests, 100% cobertura
 
 ```bash
 cd backend
@@ -165,6 +188,10 @@ npm run test:coverage    # con reporte de cobertura
 | `movement.service.ts` | 22 | 100% | 100% | 100% | 100% |
 | `alert.service.ts` | 4 | 100% | 100% | 100% | 100% |
 | `replenishment.service.ts` | 11 | 100% | 100% | 100% | 100% |
+| `location.service.ts` | 12 | 100% | 100% | 100% | 100% |
+| `sync.service.ts` | 6 | 100% | 100% | 100% | 100% |
+| `picking.service.ts` | 8 | 100% | 100% | 100% | 100% |
+| `reservation.service.ts::processPaymentConfirmed` | 4 | 100% | 100% | 100% | 100% |
 | `alert.controller.ts` | 5 | 100% | 100% | 100% | 100% |
 | `replenishment.controller.ts` | 19 | 100% | 100% | 100% | 100% |
 | `errors.ts` | 5 | 100% | 100% | 100% | 100% |
@@ -174,8 +201,9 @@ npm run test:coverage    # con reporte de cobertura
 - Controllers testeados mockeando sus services (`jest.mock('../../services/...')`)
 - `$transaction` mockeado para ejecutar callbacks sin DB real
 - `Date` controlada con `jest.useFakeTimers()` para validar horarios de despacho
+- Dependencias inter-service mockeadas con `jest.mock` + `jest.spyOn`
 
-### Frontend — 24 tests, 100% cobertura
+### Frontend — 38 tests, 100% cobertura
 
 ```bash
 cd frontend
@@ -188,8 +216,10 @@ pnpm test:coverage     # con reporte
 | `alertService.ts` | 5 |
 | `replenishmentService.ts` | 11 |
 | `movementService.ts` | 8 |
+| `syncService.ts` | 8 |
+| `pickingService.ts` | 6 |
 
-**Estrategia:** `fetch` global mockeado con `vi.fn()` para simular respuestas ok y error de cada endpoint.
+**Estrategia:** `fetch` global mockeado con `vi.spyOn` para simular respuestas ok y error de cada endpoint.
 
 ---
 
@@ -241,3 +271,7 @@ cd frontend && pnpm dev      # http://localhost:5173
 2. **Alerta** (SCRUM-26): Registrar OUT hasta bajar bajo `minStock` → ver alerta en `/Alertas`
 3. **Reposición** (SCRUM-27): Desde alerta → "Reponer Stock" → proveedor + cantidad → "✓ Recibido" → stock sube + alerta resuelta
 4. **Reservas** (SCRUM-20/33): `/Reservas` → Liberar (ACTIVE→RELEASED) o Confirmar entrega (ACTIVE→SOLD)
+5. **Prioridad de ubicaciones** (SCRUM-69): Crear ubicación con prioridad 1–10 → ver P1/P2 badge en `/StockUbicaciones` → `GET /api/v1/stock/suggest-source/:productId` devuelve lista ranqueada
+6. **Sincronización** (SCRUM-68): `/Sincronizacion` → ver tarjetas EXCESS/DEFICIT/OK por producto → "Ejecutar" transferencia de balanceo
+7. **Picking** (SCRUM-70): `/Picking` → seleccionar órdenes READY_FOR_DISPATCH → "Generar lista" → recorrido eficiente agrupado por ubicación
+8. **Pedido Pagado** (SCRUM-31): `POST /external/payment-confirmed` con `X-Api-Key: <clave>` + `{ reservationId, orderId }` → confirma reserva + transiciona orden

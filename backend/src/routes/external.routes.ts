@@ -1,12 +1,14 @@
 // ============================================================
 // Rutas: External (integraciones con otros proyectos)
 // PATCH /external/reservations/:id/confirm-delivery → SCRUM-33 (Proyecto 2)
+// POST  /external/payment-confirmed                 → SCRUM-31
 // ============================================================
 
 import { Router } from "express";
 import { body, param } from "express-validator";
 import * as reservationController from "../controllers/reservation.controller";
 import { validateRequest } from "../middlewares/validateRequest";
+import { validateApiKey } from "../middlewares/validateApiKey";
 
 const router = Router();
 
@@ -30,6 +32,25 @@ router.patch(
   confirmDeliveryRules,
   validateRequest,
   reservationController.confirmDelivery
+);
+
+const paymentConfirmedRules = [
+  body("reservationId")
+    .isInt({ min: 1 })
+    .withMessage("reservationId debe ser un entero positivo."),
+  body("orderId")
+    .optional()
+    .isString()
+    .notEmpty()
+    .withMessage("orderId debe ser una cadena no vacía."),
+];
+
+router.post(
+  "/payment-confirmed",
+  validateApiKey,
+  paymentConfirmedRules,
+  validateRequest,
+  reservationController.paymentConfirmed
 );
 
 export default router;

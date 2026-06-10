@@ -23,11 +23,16 @@ export const createLocation = async (dto: CreateLocationDto) => {
     );
   }
 
+  const priority = dto.priority !== undefined
+    ? Math.max(1, Math.min(10, dto.priority))
+    : 5;
+
   const location = await prisma.location.create({
     data: {
       name: dto.name,
       type: dto.type,
       capacity: dto.capacity,
+      priority,
     },
   });
 
@@ -39,7 +44,7 @@ export const createLocation = async (dto: CreateLocationDto) => {
  */
 export const getAllLocations = async () => {
   const locations = await prisma.location.findMany({
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
     include: {
       stocks: {
         include: {
@@ -104,12 +109,17 @@ export const updateLocation = async (id: string, dto: UpdateLocationDto) => {
     }
   }
 
+  const priority = dto.priority !== undefined
+    ? Math.max(1, Math.min(10, dto.priority))
+    : undefined;
+
   const updated = await prisma.location.update({
     where: { id },
     data: {
       name: dto.name,
       type: dto.type,
       capacity: dto.capacity,
+      ...(priority !== undefined && { priority }),
     },
   });
 

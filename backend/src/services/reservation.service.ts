@@ -13,6 +13,7 @@ import {
   ConfirmDeliveryDto,
   ReleaseReservationDto,
 } from "../utils/types";
+import { transitionOrder } from "./order.service";
 
 /**
  * Suma de unidades reservadas activas para un SKU en una ubicación.
@@ -371,4 +372,31 @@ export const confirmDelivery = async (
     alert,
     alreadySold: false,
   };
+};
+
+/**
+ * Procesa el evento "Pedido Pagado" proveniente de un sistema externo.
+ * SCRUM-31: Confirma la entrega de la reserva (ACTIVE → SOLD + OUT movement)
+ * y opcionalmente transiciona la orden a READY_FOR_DISPATCH.
+ *
+ * @param reservationId ID de la reserva a confirmar
+ * @param orderId       ID de la orden (opcional) — se transiciona a READY_FOR_DISPATCH
+ */
+export const processPaymentConfirmed = async (
+  reservationId: number,
+  orderId?: string
+): Promise<{
+  deliveryResult: Awaited<ReturnType<typeof confirmDelivery>>;
+  orderTransition?: { id: string; status: string };
+}> => {
+  const deliveryResult = await confirmDelivery(reservationId);
+
+  let orderTransition: { id: string; status: string } | undefined;
+
+  if (orderId) {
+    const updated = await transitionOrder(orderId, "READY_FOR_DISPATCH");
+    orderTransition = { id: updated.id, status: updated.status };
+  }
+
+  return { deliveryResult, orderTransition };
 };

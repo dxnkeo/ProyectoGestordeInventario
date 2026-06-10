@@ -210,3 +210,60 @@ export const getStockByLocation = async (locationId: string) => {
 
   return { location, stocks: enriched };
 };
+
+/**
+ * Sugiere ubicaciones fuente ordenadas por prioridad y stock disponible.
+ * SCRUM-69: implementa reglas de prioridad de ubicaciones.
+ *
+ * @param productId UUID del producto
+ * @param quantity  Cantidad mínima requerida (opcional, default 1)
+ * @throws AppError 404 si el producto no existe
+ */
+export const suggestSourceLocation = async (
+  productId: string,
+  quantity = 1
+): Promise<Array<{
+  location: { id: string; name: string; type: string; priority: number };
+  quantity: number;
+  reserved: number;
+  stockDisponible: number;
+  rank: number;
+}>> => {
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) {
+    throw new AppError(`No se encontró un producto con ID "${productId}".`, 404);
+  }
+
+  const stocks = await prisma.stock.findMany({
+    where: { productId },
+    include: {
+      location: {
+        select: { id: true, name: true, type: true, priority: true },
+      },
+      product: { select: { id: true, name: true, sku: true } },
+    },
+  });
+
+  const enriched = await Promise.all(
+    stocks.map(async (s) => {
+      const reserved = await getActiveReservedQuantity(product.sku, s.locationId);
+      const stockDisponible = s.quantity - reserved;
+      return {
+        location: s.location,
+        quantity: s.quantity,
+        reserved,
+        stockDisponible,
+      };
+    })
+  );
+
+  const filtered = enriched.filter((s) => s.stockDisponible >= quantity);
+  filtered.sort((a, b) => {
+    if (a.location.priority !== b.location.priority) {
+      return a.location.priority - b.location.priority;
+    }
+    return b.stockDisponible - a.stockDisponible;
+  });
+
+  return filtered.map((s, idx) => ({ ...s, rank: idx + 1 }));
+};

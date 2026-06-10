@@ -5,6 +5,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_TIMEZONE: z.string().default("America/Santiago"),
+  EXTERNAL_API_KEY: z.string().optional(),
 });
 
 /**

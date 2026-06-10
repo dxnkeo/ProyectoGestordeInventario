@@ -29,6 +29,25 @@ export const getAllStock = async (
  * GET /stock/:locationId
  * Lista el stock de una ubicación específica
  */
+/**
+ * GET /stock/suggest-source/:productId?quantity=N
+ * SCRUM-69: Sugiere ubicaciones fuente ordenadas por prioridad
+ */
+export const suggestSource = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { productId } = req.params;
+    const quantity = req.query.quantity ? parseInt(req.query.quantity as string, 10) : 1;
+    const suggestions = await stockService.suggestSourceLocation(productId, quantity);
+    sendSuccess(res, suggestions, `${suggestions.length} ubicación(es) disponible(s) ordenadas por prioridad.`);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getStockByLocation = async (
   req: Request,
   res: Response,

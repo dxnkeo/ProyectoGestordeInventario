@@ -89,6 +89,28 @@ export const releaseReservation = async (
 };
 
 /**
+ * POST /external/payment-confirmed
+ * SCRUM-31: Procesa el evento "Pedido Pagado" desde un sistema externo.
+ */
+export const paymentConfirmed = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { reservationId, orderId } = req.body as {
+      reservationId: number;
+      orderId?: string;
+    };
+
+    const result = await reservationService.processPaymentConfirmed(reservationId, orderId);
+    sendSuccess(res, result, "Evento 'Pedido Pagado' procesado exitosamente.");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * PATCH /external/reservations/:id/confirm-delivery — SCRUM-33: Proyecto 2
  */
 export const confirmDelivery = async (

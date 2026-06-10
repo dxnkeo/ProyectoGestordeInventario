@@ -23,6 +23,8 @@ import routeRoutes from "./routes/route.routes";
 import logisticsRoutes from "./routes/logistics.routes";
 import alertRoutes from "./routes/alert.routes";
 import replenishmentRoutes from "./routes/replenishment.routes";
+import syncRoutes from "./routes/sync.routes";
+import pickingRoutes from "./routes/picking.routes";
 
 import { errorHandler } from "./middlewares/errorHandler";
 
@@ -80,6 +82,8 @@ app.use(`${API_PREFIX}/routes`, routeRoutes);
 app.use(`${API_PREFIX}/logistics`, logisticsRoutes);
 app.use(`${API_PREFIX}/alerts`, alertRoutes);
 app.use(`${API_PREFIX}/replenishment`, replenishmentRoutes);
+app.use(`${API_PREFIX}/sync`, syncRoutes);
+app.use(`${API_PREFIX}/picking`, pickingRoutes);
 
 // ── Documentación Swagger ────────────────────────────────────
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

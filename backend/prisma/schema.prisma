@@ -21,9 +21,10 @@ model Location {
   type      String   // Ej: "bodega", "tienda", "almacen"
   capacity  Int?     // Capacidad máxima opcional (unidades)
   createdAt DateTime @default(now())
-  dispatchStart String @default("8:00")
-  dispatchEnd String @default("18:00")
-  maxDailyDispatch Int @default(100) // Capacidad máxima de despacho diario
+  dispatchStart    String @default("8:00")
+  dispatchEnd      String @default("18:00")
+  maxDailyDispatch Int    @default(100)
+  priority         Int    @default(5)  // 1 = mayor prioridad, 10 = menor prioridad
 
   // Relaciones
   stocks              Stock[]
