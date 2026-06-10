@@ -39,8 +39,9 @@ export const suggestSource = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { productId } = req.params;
-    const quantity = req.query.quantity ? parseInt(req.query.quantity as string, 10) : 1;
+    const productId = req.params.productId as string;
+    const rawQty = req.query.quantity;
+    const quantity = typeof rawQty === "string" ? parseInt(rawQty, 10) : 1;
     const suggestions = await stockService.suggestSourceLocation(productId, quantity);
     sendSuccess(res, suggestions, `${suggestions.length} ubicación(es) disponible(s) ordenadas por prioridad.`);
   } catch (error) {
