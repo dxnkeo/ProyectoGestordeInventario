@@ -12,7 +12,7 @@ beforeEach(() => {
 
 const mockReservation = {
   reservationId: 1,
-  orderId: 1001,
+  orderId: "550e8400-e29b-41d4-a716-446655440001",
   sku: "SKU-001",
   quantity: 2,
   status: "ACTIVE",
@@ -61,9 +61,8 @@ describe("reservationService.getReservations", () => {
 
 describe("reservationService.createReservation", () => {
   const dto = {
-    orderId: 1001,
+    orderId: "550e8400-e29b-41d4-a716-446655440001",
     sku: "SKU-001",
-    locationId: "loc-1",
     quantity: 2,
   };
 

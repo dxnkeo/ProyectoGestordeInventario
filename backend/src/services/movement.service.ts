@@ -6,6 +6,7 @@ import prisma from "../prisma/client";
 import { CreateMovementDto, MovementResult } from "../utils/types";
 import { AppError } from "../utils/AppError";
 import { logger } from "../config/logger";
+import * as eventService from "./event.service";
 
 /**
  * Registra un movimiento de inventario (entrada o salida) y
@@ -165,6 +166,38 @@ export const createMovement = async (
       location: location.name,
       currentStock: result.newQuantity,
       minStock: product.minStock,
+    });
+  }
+
+  const isAdjustment = dto.note?.includes("Conciliación");
+  const eventType =
+    dto.type === "IN"
+      ? "stock_received"
+      : isAdjustment
+        ? "stock_adjusted"
+        : "stock_dispatched";
+
+  void eventService.emitStockMovement({
+    eventType,
+    sku: product.sku,
+    locationId: dto.locationId,
+    quantity: dto.quantity,
+    productName: product.name,
+    locationName: location.name,
+    locationType: location.type,
+    movementId: result.movement.id,
+  });
+
+  if (dto.type === "OUT" && result.newQuantity <= product.minStock) {
+    void eventService.emitCriticalThreshold({
+      alertId: result.movement.id,
+      sku: product.sku,
+      locationId: dto.locationId,
+      currentStock: result.newQuantity,
+      minStock: product.minStock,
+      productName: product.name,
+      locationName: location.name,
+      locationType: location.type,
     });
   }
 
@@ -363,6 +396,18 @@ export const createTransfer = async (dto: {
     }
 
     return { movOut, movIn };
+  }).then(async (result) => {
+    void eventService.emitStockMovement({
+      eventType: "stock_transfer_initiated",
+      sku: product.sku,
+      locationId: dto.sourceLocationId,
+      quantity: dto.quantity,
+      productName: product.name,
+      locationName: sourceLoc.name,
+      locationType: sourceLoc.type,
+      movementId: result.movOut.id,
+    });
+    return result;
   });
 };
 

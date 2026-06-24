@@ -57,6 +57,8 @@ const NAV_LINKS = [
   { to: "/RegistrarMovimientos", label: "➕ Registrar Movimiento" },
   { to: "/Transferir", label: "🔄 Transferir" },
   { to: "/Alertas", label: "🔔 Alertas y Compras" },
+  { to: "/Conciliacion", label: "📋 Conciliación" },
+  { to: "/Eventos", label: "📡 Eventos" },
   { to: "/RegistrarUbicaciones", label: "📍 Ubicaciones" },
   { to: "/Reservas", label: "🔖 Reservas" },
 ];

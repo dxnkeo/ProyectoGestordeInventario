@@ -14,6 +14,8 @@ import {
   ReleaseReservationDto,
 } from "../utils/types";
 import { transitionOrder } from "./order.service";
+import { suggestSourceLocationBySku } from "./stock.service";
+import * as eventService from "./event.service";
 
 /**
  * Suma de unidades reservadas activas para un SKU en una ubicación.
@@ -61,25 +63,39 @@ export const getStockDisponible = async (
 
 /**
  * Mock Proyecto 3 — crea reserva bloqueando stock disponible (no quantity físico).
+ * Si no se envía locationId, elige la ubicación óptima automáticamente (Grupo 3).
  */
 export const createReservation = async (dto: CreateReservationDto) => {
+  const sku = dto.sku.trim().toUpperCase();
+
   // === 0. VALIDACIÓN TEMPRANA DE CANTIDAD (antes de cualquier query) ===
   if (dto.quantity <= 0) {
     throw new AppError("La cantidad debe ser mayor a cero.", 400);
   }
 
-  const [product, location] = await Promise.all([
-    prisma.product.findUnique({ where: { sku: dto.sku } }),
-    prisma.location.findUnique({ where: { id: dto.locationId } }),
-  ]);
+  const product = await prisma.product.findUnique({ where: { sku } });
 
   if (!product) {
-    throw new AppError(`No se encontró un producto con SKU "${dto.sku}".`, 404);
+    throw new AppError(`No se encontró un producto con SKU "${sku}".`, 404);
   }
+
+  let locationId = dto.locationId?.trim();
+  if (!locationId) {
+    const suggestions = await suggestSourceLocationBySku(sku, dto.quantity);
+    if (suggestions.length === 0) {
+      throw new AppError(
+        `No hay ubicaciones con stock suficiente para SKU "${sku}" (cantidad solicitada: ${dto.quantity}).`,
+        400
+      );
+    }
+    locationId = suggestions[0].location.id;
+  }
+
+  const location = await prisma.location.findUnique({ where: { id: locationId } });
 
   if (!location) {
     throw new AppError(
-      `No se encontró una ubicación con ID "${dto.locationId}".`,
+      `No se encontró una ubicación con ID "${locationId}".`,
       404
     );
   }
@@ -113,7 +129,7 @@ export const createReservation = async (dto: CreateReservationDto) => {
   const todayReservations = await prisma.reservation.aggregate({
     _sum: { quantity: true },
     where: {
-      locationId: dto.locationId,
+      locationId,
       createdAt: { gte: startOfDay, lte: endOfDay },
       status: { notIn: [ReservationStatus.EXPIRED, ReservationStatus.RELEASED] },
     },
@@ -136,12 +152,12 @@ export const createReservation = async (dto: CreateReservationDto) => {
   const reservation = await prisma.$transaction(async (tx) => {
     const stock = await tx.stock.findUnique({
       where: {
-        productId_locationId: { productId: product.id, locationId: dto.locationId },
+        productId_locationId: { productId: product.id, locationId },
       },
     });
 
     const reservedAgg = await tx.reservation.aggregate({
-      where: { sku: dto.sku, locationId: dto.locationId, status: ReservationStatus.ACTIVE },
+      where: { sku, locationId, status: ReservationStatus.ACTIVE },
       _sum: { quantity: true },
     });
 
@@ -158,13 +174,13 @@ export const createReservation = async (dto: CreateReservationDto) => {
 
     const expiresAt = dto.expiresAt
       ? new Date(dto.expiresAt)
-      : new Date(Date.now() + 24 * 60 * 60 * 1000);
+      : new Date(Date.now() + config.reservationTtlMinutes * 60 * 1000);
 
     return tx.reservation.create({
       data: {
         orderId: dto.orderId,
-        sku: dto.sku,
-        locationId: dto.locationId,
+        sku,
+        locationId,
         quantity: dto.quantity,
         expiresAt,
         status: ReservationStatus.ACTIVE,
@@ -177,9 +193,59 @@ export const createReservation = async (dto: CreateReservationDto) => {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
   });
 
-  const availability = await getStockDisponible(dto.sku, dto.locationId);
+  const availability = await getStockDisponible(sku, locationId);
+
+  void eventService.emitStockReserved({
+    reservationId: reservation.reservationId,
+    sku,
+    locationId,
+    quantity: dto.quantity,
+    orderId: dto.orderId,
+  });
 
   return { reservation, ...availability };
+};
+
+/**
+ * Expira reservas ACTIVE cuyo expiresAt ya pasó (TTL Grupo 3).
+ * Libera stock disponible sin tocar quantity físico.
+ * @returns Cantidad de reservas expiradas
+ */
+export const expireStaleReservations = async (): Promise<number> => {
+  const now = new Date();
+
+  const stale = await prisma.reservation.findMany({
+    where: {
+      status: ReservationStatus.ACTIVE,
+      expiresAt: { lte: now },
+    },
+  });
+
+  if (stale.length === 0) {
+    return 0;
+  }
+
+  await prisma.reservation.updateMany({
+    where: {
+      reservationId: { in: stale.map((r) => r.reservationId) },
+    },
+    data: {
+      status: ReservationStatus.EXPIRED,
+      releasedAt: now,
+    },
+  });
+
+  for (const r of stale) {
+    void eventService.emitStockReleased({
+      reservationId: r.reservationId,
+      sku: r.sku,
+      locationId: r.locationId,
+      quantity: r.quantity,
+      reason: "EXPIRED",
+    });
+  }
+
+  return stale.length;
 };
 
 /**
@@ -253,6 +319,14 @@ export const cancelAndReleaseReservation = async (
     updated.sku,
     updated.locationId
   );
+
+  void eventService.emitStockReleased({
+    reservationId: updated.reservationId,
+    sku: updated.sku,
+    locationId: updated.locationId,
+    quantity: updated.quantity,
+    reason: "RELEASED",
+  });
 
   return { reservation: updated, ...availability, alreadyReleased: false };
 };
@@ -389,6 +463,16 @@ export const confirmDelivery = async (
     reservation.sku,
     reservation.locationId
   );
+
+  void eventService.emitStockMovement({
+    eventType: "stock_dispatched",
+    sku: product.sku,
+    locationId: reservation.locationId,
+    quantity: reservation.quantity,
+    productName: product.name,
+    locationName: reservation.location.name,
+    movementId: result.movement.id,
+  });
 
   return {
     reservation: result.reservation,

@@ -10,6 +10,8 @@ import { TransferPage } from "../pages/TransferPage";
 import { AlertsPage } from "../pages/AlertsPage";
 import { SyncPage } from "../pages/SyncPage";
 import { PickingPage } from "../pages/PickingPage";
+import { ReconciliationPage } from "../pages/ReconciliationPage";
+import { EventsPage } from "../pages/EventsPage";
 
 export const AppRouter = () => {
   return (
@@ -26,6 +28,8 @@ export const AppRouter = () => {
       <Route path="/Alertas" element={<AlertsPage />} />
       <Route path="/Sincronizacion" element={<SyncPage />} />
       <Route path="/Picking" element={<PickingPage />} />
+      <Route path="/Conciliacion" element={<ReconciliationPage />} />
+      <Route path="/Eventos" element={<EventsPage />} />
     </Routes>
   );
 };

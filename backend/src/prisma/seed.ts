@@ -62,6 +62,24 @@ async function main() {
 
   console.log(`✅ Productos creados: ${laptop.name}, ${mouse.name}`);
 
+  // ── Productos de integración Grupo 3 (Pedidos) ───────────────────
+  const group3Products = await Promise.all([
+    prisma.product.create({
+      data: { name: "Producto Demo 001", sku: "PROD-001", minStock: 5 },
+    }),
+    prisma.product.create({
+      data: { name: "Producto Demo 002", sku: "PROD-002", minStock: 5 },
+    }),
+    prisma.product.create({
+      data: { name: "Producto Test", sku: "TEST-123", minStock: 3 },
+    }),
+    prisma.product.create({
+      data: { name: "Producto Oferta 500", sku: "OFERTA-500", minStock: 10 },
+    }),
+  ]);
+
+  console.log(`✅ Productos Grupo 3 creados: ${group3Products.map((p) => p.sku).join(", ")}`);
+
   // ── 3. Crear Stock Inicial ───────────────────────────────────────
   await prisma.stock.createMany({
     data: [
@@ -85,6 +103,11 @@ async function main() {
         locationId: tiendaNorte.id,
         quantity: 3, // ⚠️ Por debajo del umbral crítico (≤10)
       },
+      // Stock Grupo 3 — SKUs de prueba en ambas ubicaciones
+      ...group3Products.flatMap((p) => [
+        { productId: p.id, locationId: bodegaCentral.id, quantity: 100 },
+        { productId: p.id, locationId: tiendaNorte.id, quantity: 25 },
+      ]),
     ],
   });
 
@@ -127,12 +150,12 @@ async function main() {
   console.log("✅ Movimientos iniciales creados.");
 
   // ── 5. Crear Reservas de Prueba (mock Proyecto 3) ───────────────
-  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
   await prisma.reservation.createMany({
     data: [
       {
-        orderId: 1001,
+        orderId: "550e8400-e29b-41d4-a716-446655440001",
         sku: laptop.sku,
         locationId: tiendaNorte.id,
         quantity: 2,
@@ -140,7 +163,7 @@ async function main() {
         expiresAt,
       },
       {
-        orderId: 1002,
+        orderId: "550e8400-e29b-41d4-a716-446655440002",
         sku: mouse.sku,
         locationId: bodegaCentral.id,
         quantity: 10,
@@ -200,8 +223,8 @@ async function main() {
   // ── Resumen ──────────────────────────────────────────────────────
   console.log("\n📊 Resumen del seed:");
   console.log(`   📍 Ubicaciones: 2`);
-  console.log(`   📦 Productos:   2`);
-  console.log(`   📊 Registros de stock: 4`);
+  console.log(`   📦 Productos:   ${2 + group3Products.length}`);
+  console.log(`   📊 Registros de stock: ${4 + group3Products.length * 2}`);
   console.log(`   🔄 Movimientos: 4`);
   console.log(`   🔒 Reservas:    2 (ACTIVE)`);
   console.log(`   🏢 Proveedores: 2`);

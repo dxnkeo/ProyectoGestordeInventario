@@ -275,3 +275,124 @@ export const suggestSourceLocation = async (
 
   return filtered.map((s, idx) => ({ ...s, rank: idx + 1 }));
 };
+
+export interface ExternalStockItem {
+  sku: string;
+  locationId: string;
+  locationName: string;
+  locationType: string;
+  quantity: number;
+  reserved: number;
+  stockDisponible: number;
+  minStock: number;
+  dispatchWindow: { start: string; end: string };
+}
+
+/**
+ * Sugiere ubicaciones por SKU (integración Grupo 3).
+ * @throws AppError 404 si el SKU no existe
+ */
+export const suggestSourceLocationBySku = async (
+  sku: string,
+  quantity = 1
+) => {
+  const normalizedSku = sku.trim().toUpperCase();
+  const product = await prisma.product.findUnique({ where: { sku: normalizedSku } });
+  if (!product) {
+    throw new AppError(`No se encontró un producto con SKU "${normalizedSku}".`, 404);
+  }
+  return suggestSourceLocation(product.id, quantity);
+};
+
+/**
+ * Stock disponible por SKU en todas las ubicaciones (integración Grupo 3).
+ * @throws AppError 404 si el SKU no existe
+ */
+export const getStockBySku = async (sku: string): Promise<ExternalStockItem[]> => {
+  const normalizedSku = sku.trim().toUpperCase();
+  const product = await prisma.product.findUnique({ where: { sku: normalizedSku } });
+  if (!product) {
+    throw new AppError(`No se encontró un producto con SKU "${normalizedSku}".`, 404);
+  }
+
+  const [stocks, reservedMap] = await Promise.all([
+    prisma.stock.findMany({
+      where: { productId: product.id },
+      include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            dispatchStart: true,
+            dispatchEnd: true,
+          },
+        },
+      },
+    }),
+    buildReservedMap({ sku: normalizedSku }),
+  ]);
+
+  return stocks.map((stock) => {
+    const reserved = reservedMap.get(`${normalizedSku}:${stock.locationId}`) ?? 0;
+    return {
+      sku: normalizedSku,
+      locationId: stock.locationId,
+      locationName: stock.location.name,
+      locationType: stock.location.type,
+      quantity: stock.quantity,
+      reserved,
+      stockDisponible: stock.quantity - reserved,
+      minStock: product.minStock,
+      dispatchWindow: {
+        start: stock.location.dispatchStart,
+        end: stock.location.dispatchEnd,
+      },
+    };
+  });
+};
+
+/**
+ * Stock por SKU y ubicación específica (integración Grupo 3).
+ * @throws AppError 404 si SKU o ubicación no existen
+ */
+export const getStockBySkuAndLocation = async (
+  sku: string,
+  locationId: string
+): Promise<ExternalStockItem> => {
+  const normalizedSku = sku.trim().toUpperCase();
+  const product = await prisma.product.findUnique({ where: { sku: normalizedSku } });
+  if (!product) {
+    throw new AppError(`No se encontró un producto con SKU "${normalizedSku}".`, 404);
+  }
+
+  const location = await prisma.location.findUnique({ where: { id: locationId } });
+  if (!location) {
+    throw new AppError(`No se encontró una ubicación con ID "${locationId}".`, 404);
+  }
+
+  const stock = await prisma.stock.findUnique({
+    where: {
+      productId_locationId: { productId: product.id, locationId },
+    },
+  });
+
+  const quantity = stock?.quantity ?? 0;
+  const reservedMap = await buildReservedMap({ sku: normalizedSku, locationId });
+  const reserved = reservedMap.get(`${normalizedSku}:${locationId}`) ?? 0;
+
+  return {
+    sku: normalizedSku,
+    locationId,
+    locationName: location.name,
+    locationType: location.type,
+    quantity,
+    reserved,
+    stockDisponible: quantity - reserved,
+    minStock: product.minStock,
+    dispatchWindow: {
+      start: location.dispatchStart,
+      end: location.dispatchEnd,
+    },
+  };
+};

@@ -4,6 +4,13 @@ import * as orderService from "../../services/order.service";
 import { AppError } from "../../utils/AppError";
 
 jest.mock("../../services/order.service");
+jest.mock("../../services/stock.service");
+
+import * as stockService from "../../services/stock.service";
+
+const mockedSuggestBySku = stockService.suggestSourceLocationBySku as jest.MockedFunction<
+  typeof stockService.suggestSourceLocationBySku
+>;
 
 const mockProduct = { id: "prod-1", name: "Prod Test", sku: "SKU-001", minStock: 2 };
 
@@ -24,7 +31,7 @@ const makeReservation = (status = "ACTIVE") => ({
   sku: "SKU-001",
   locationId: "loc-1",
   quantity: 5,
-  orderId: 42,
+  orderId: "550e8400-e29b-41d4-a716-446655440000",
   status,
   expiresAt: null,
   createdAt: new Date(),
@@ -169,7 +176,7 @@ describe("reservationService.createReservation", () => {
   afterEach(() => jest.useRealTimers());
 
   const baseDto = {
-    orderId: 42,
+    orderId: "550e8400-e29b-41d4-a716-446655440000",
     sku: "SKU-001",
     locationId: "loc-1",
     quantity: 5,
@@ -229,7 +236,7 @@ describe("reservationService.createReservation", () => {
     await expect(reservationService.createReservation(baseDto)).rejects.toThrow(AppError);
   });
 
-  it("crea reserva exitosamente sin expiresAt personalizado", async () => {
+  it("crea reserva exitosamente sin expiresAt personalizado (TTL 30 min)", async () => {
     prismaMock.product.findUnique.mockResolvedValueOnce(mockProduct as any);
     prismaMock.location.findUnique.mockResolvedValueOnce(makeLocation() as any);
     (prismaMock.reservation.aggregate as jest.MockedFunction<any>).mockResolvedValueOnce({
@@ -242,12 +249,17 @@ describe("reservationService.createReservation", () => {
     }); // inside tx
     const created = makeReservation("ACTIVE");
     prismaMock.reservation.create.mockResolvedValueOnce({ ...created, location: makeLocation() } as any);
-    // getStockDisponible post-transaction
     setupGetStockDisponibleMocks(100, 5);
 
     const result = await reservationService.createReservation(baseDto);
     expect(result.reservation.status).toBe("ACTIVE");
-    expect(prismaMock.reservation.create).toHaveBeenCalled();
+    expect(prismaMock.reservation.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          expiresAt: new Date("2024-01-01T12:30:00.000Z"),
+        }),
+      })
+    );
   });
 
   it("crea reserva exitosamente con expiresAt personalizado", async () => {
@@ -271,6 +283,71 @@ describe("reservationService.createReservation", () => {
     expect(prismaMock.reservation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ expiresAt: new Date("2099-12-31T23:59:59.000Z") }),
+      })
+    );
+  });
+
+  it("elige ubicación automáticamente cuando no se envía locationId", async () => {
+    const dto = {
+      orderId: "550e8400-e29b-41d4-a716-446655440000",
+      sku: "sku-001",
+      quantity: 5,
+    };
+
+    mockedSuggestBySku.mockResolvedValueOnce([
+      {
+        location: { id: "loc-1", name: "Bodega A", type: "bodega", priority: 1 },
+        quantity: 100,
+        reserved: 0,
+        stockDisponible: 100,
+        rank: 1,
+      },
+    ]);
+
+    prismaMock.product.findUnique.mockResolvedValueOnce(mockProduct as any);
+    prismaMock.location.findUnique.mockResolvedValueOnce(makeLocation() as any);
+    (prismaMock.reservation.aggregate as jest.MockedFunction<any>).mockResolvedValueOnce({
+      _sum: { quantity: 0 },
+    });
+    prismaMock.$transaction.mockImplementation(async (fn: any) => fn(prismaMock));
+    prismaMock.stock.findUnique.mockResolvedValueOnce(makeStock(100) as any);
+    (prismaMock.reservation.aggregate as jest.MockedFunction<any>).mockResolvedValueOnce({
+      _sum: { quantity: 0 },
+    });
+    const created = makeReservation("ACTIVE");
+    prismaMock.reservation.create.mockResolvedValueOnce({ ...created, location: makeLocation() } as any);
+    setupGetStockDisponibleMocks(100, 5);
+
+    await reservationService.createReservation(dto);
+
+    expect(mockedSuggestBySku).toHaveBeenCalledWith("SKU-001", 5);
+    expect(prismaMock.reservation.create).toHaveBeenCalled();
+  });
+});
+
+// ── expireStaleReservations ──────────────────────────────────────
+
+describe("reservationService.expireStaleReservations", () => {
+  it("retorna 0 si no hay reservas vencidas", async () => {
+    prismaMock.reservation.findMany.mockResolvedValueOnce([]);
+    const count = await reservationService.expireStaleReservations();
+    expect(count).toBe(0);
+    expect(prismaMock.reservation.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("marca reservas vencidas como EXPIRED", async () => {
+    prismaMock.reservation.findMany.mockResolvedValueOnce([
+      { reservationId: 1 },
+      { reservationId: 2 },
+    ] as any);
+    prismaMock.reservation.updateMany.mockResolvedValueOnce({ count: 2 } as any);
+
+    const count = await reservationService.expireStaleReservations();
+    expect(count).toBe(2);
+    expect(prismaMock.reservation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { reservationId: { in: [1, 2] } },
+        data: expect.objectContaining({ status: "EXPIRED" }),
       })
     );
   });

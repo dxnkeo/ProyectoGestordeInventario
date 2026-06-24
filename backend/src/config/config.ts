@@ -27,4 +27,20 @@ export const config = {
 
   /** Timezone usada para validaciones horarias de despacho */
   appTimezone: process.env.APP_TIMEZONE ?? "America/Santiago",
+
+  /** TTL por defecto de reservas (Grupo 3: 30 min para completar pago) */
+  reservationTtlMinutes: parseInt(process.env.RESERVATION_TTL_MINUTES ?? "30", 10),
+
+  /** Intervalo del job que expira reservas vencidas (ms) */
+  reservationExpiryIntervalMs: parseInt(
+    process.env.RESERVATION_EXPIRY_INTERVAL_MS ?? "60000",
+    10
+  ),
+
+  /** Outbox eventos — Grupo 9 Analítica */
+  analyticsEventsUrl: process.env.ANALYTICS_EVENTS_URL ?? "",
+  analyticsApiKey: process.env.ANALYTICS_API_KEY ?? "",
+  eventWorkerIntervalMs: parseInt(process.env.EVENT_WORKER_INTERVAL_MS ?? "30000", 10),
+  eventMaxAttempts: parseInt(process.env.EVENT_MAX_ATTEMPTS ?? "5", 10),
+  eventRequestTimeoutMs: parseInt(process.env.EVENT_REQUEST_TIMEOUT_MS ?? "10000", 10),
 } as const;

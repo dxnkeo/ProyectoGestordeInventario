@@ -35,11 +35,42 @@ router.patch(
   "/replenishment/:id/status",
   [
     body("status")
-      .isIn(["PENDING", "ORDERED", "RECEIVED", "CANCELLED"])
+      .isIn(["PROPOSED", "PENDING", "ORDERED", "RECEIVED", "CANCELLED"])
       .withMessage("Estado de orden inválido."),
   ],
   validateRequest,
   replenishmentController.updateReplenishmentOrderStatus
+);
+
+router.get("/suggestions", replenishmentController.getSuggestions);
+
+router.post(
+  "/proposals",
+  [
+    body("productId").isUUID(),
+    body("locationId").isUUID(),
+    body("supplierId").isUUID(),
+    body("quantity").isInt({ min: 1 }),
+  ],
+  validateRequest,
+  replenishmentController.createProposal
+);
+
+router.patch(
+  "/proposals/:id/approve",
+  replenishmentController.approveProposal
+);
+
+router.post(
+  "/simulate",
+  [
+    body("sku").trim().notEmpty(),
+    body("locationId").isUUID(),
+    body("horizonDays").optional().isInt({ min: 1, max: 365 }),
+    body("scenario").optional().isIn(["normal", "peak", "low"]),
+  ],
+  validateRequest,
+  replenishmentController.simulateDemand
 );
 
 export default router;

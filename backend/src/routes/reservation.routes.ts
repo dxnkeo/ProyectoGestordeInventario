@@ -14,16 +14,17 @@ const router: Router = Router();
 
 const createReservationRules = [
   body("orderId")
-    .isInt({ min: 1 })
-    .withMessage("orderId debe ser un entero positivo."),
+    .isString()
+    .notEmpty()
+    .isUUID(4)
+    .withMessage("orderId debe ser un UUID v4 válido."),
   body("sku")
     .trim()
     .notEmpty()
     .withMessage("El SKU es requerido."),
   body("locationId")
+    .optional()
     .trim()
-    .notEmpty()
-    .withMessage("locationId es requerido.")
     .isUUID()
     .withMessage("locationId debe ser un UUID válido."),
   body("quantity")

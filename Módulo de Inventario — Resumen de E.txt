@@ -1,0 +1,82 @@
+Módulo de Inventario — Resumen de Estado y Necesidades
+
+
+Equipo Analítica → Equipo Inventario
+
+Lo que ya está funcionando (lado Analítica)
+Tenemos los siguientes endpoints de consulta operativos y con tests:
+
+Endpoint	Descripción
+GET /inventory/kpis	Métricas globales del inventario
+GET /inventory/stock-status	Distribución SKUs por estado (NORMAL / CRITICAL / OUT_OF_STOCK)
+GET /inventory/snapshot	Estado detallado por SKU × bodega (paginado, con filtros)
+GET /locations/catalog	Catálogo de ubicaciones físicas
+GET /products/thresholds	SKUs con stock bajo umbral crítico
+La recepción de eventos (POST /events) ya está lista y valida los siguientes tipos:
+
+stock_received, stock_reserved, stock_dispatched, stock_adjusted
+stock_transfer_initiated, stock_out_error, critical_threshold_reached
+Lo que actualmente devolvemos con datos placeholders
+Estos campos aparecen en la API pero su valor es ficticio hasta que tengamos los datos reales:
+
+1. total_stock_value → devuelve 0.0
+
+Qué necesitamos: el precio_unitario (o costo) de cada SKU
+Dónde necesitamos ese dato: en el evento o en una tabla maestra de productos
+2. turnover_rate → devuelve 0.0
+
+Qué necesitamos: historial de movimientos para calcular rotación
+Se puede calcular con los datos que ya ingresan; pendiente de implementar el cálculo
+3. reserved_stock → devuelve 0 en snapshot
+
+Qué necesitamos: saber qué reservas están activas por SKU + ubicación
+El evento stock_reserved ya llega, falta calcular el acumulado activo
+4. Metadatos de productos → nombre y categoría genéricos
+
+product_name devuelve el mismo sku_id
+category devuelve "Sin categoría", unit devuelve "unidad"
+Qué necesitamos: una tabla o feed con sku_id → nombre, categoría, unidad
+5. Detalle de ubicaciones → incompleto
+
+city, address, location_type llegan vacíos o genéricos
+Qué necesitamos: que el evento critical_threshold_reached incluya estos campos, o que nos compartan una tabla dim_locations
+Lo que necesitamos de ustedes (Equipo Inventario)
+En orden de prioridad:
+
+Agregar unit_price al evento de stock (o darnos acceso a tabla de precios)
+
+→ desbloquea total_stock_value
+
+Confirmar que los eventos stock_reserved cancelen cuando el pedido se completa/cancela
+
+→ necesitamos saber cuándo una reserva deja de estar activa para calcular reserved_stock
+
+Enriquecer el evento critical_threshold_reached con datos de la ubicación
+
+→ agregar location_name, location_type, city al payload
+
+Compartir catálogo de productos (sku_id, product_name, category, unit)
+
+→ puede ser una tabla, un endpoint, o incluirlo en los eventos
+
+Estructura de evento que ya aceptamos
+
+{
+  "source": "inventory",
+  "event_type": "critical_threshold_reached",
+  "project_id": "proyecto-09",
+  "created_at": "2026-06-10T10:00:00Z",
+  "payload": {
+    "sku_id": "SKU-PROD-001",
+    "location_id": "uuid-de-la-bodega",
+    "current_stock": 5,
+    "threshold_limite": 20
+  }
+}
+
+
+
+Lo que NO necesitamos por ahora
+Cambios en la frecuencia de envío de eventos (la recepción ya es en tiempo real)
+Nuevos tipos de evento (los actuales cubren todos los casos del dashboard, se pueden sugerir nuevos pero el tiempo de desarrollo ya es limitado)
+Acceso directo a su base de datos operacional

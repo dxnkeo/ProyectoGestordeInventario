@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import {
   getSuppliers, createSupplier, getReplenishmentOrders,
   createReplenishmentOrder, updateReplenishmentOrderStatus,
+  getSuggestions, createProposal, approveProposal, simulateDemand,
 } from "../../controllers/replenishment.controller";
 import * as replenishmentService from "../../services/replenishment.service";
 import { NotFoundError, ConflictError } from "../../utils/errors";
@@ -132,5 +133,65 @@ describe("replenishmentController.updateReplenishmentOrderStatus", () => {
     const req = { params: { id: "order-1" }, body: { status: "CANCELLED" } } as unknown as Request;
     await updateReplenishmentOrderStatus(req, mockRes(), next);
     expect(next).toHaveBeenCalledWith(expect.any(ConflictError));
+  });
+});
+
+describe("replenishmentController.getSuggestions", () => {
+  it("retorna sugerencias", async () => {
+    mockSvc.getReplenishmentSuggestions.mockResolvedValueOnce([]);
+    const res = mockRes();
+    await getSuggestions({ query: {} } as Request, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("propaga error al next", async () => {
+    mockSvc.getReplenishmentSuggestions.mockRejectedValueOnce(new Error("DB"));
+    await getSuggestions({ query: {} } as Request, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.any(Error));
+  });
+});
+
+describe("replenishmentController.createProposal", () => {
+  it("crea propuesta y responde 201", async () => {
+    mockSvc.createProposal.mockResolvedValueOnce({ ...mockOrder, status: "PROPOSED" } as any);
+    const res = mockRes();
+    await createProposal({ body: { productId: "prod-1", locationId: "loc-1", supplierId: "sup-1", quantity: 20 } } as Request, res, next);
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("propaga NotFoundError al next", async () => {
+    mockSvc.createProposal.mockRejectedValueOnce(new NotFoundError("Producto"));
+    await createProposal({ body: {} } as Request, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
+  });
+});
+
+describe("replenishmentController.approveProposal", () => {
+  it("aprueba propuesta y responde 200", async () => {
+    mockSvc.approveProposal.mockResolvedValueOnce({ ...mockOrder, status: "ORDERED" } as any);
+    const res = mockRes();
+    await approveProposal({ params: { id: "order-1" } } as unknown as Request, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("propaga ConflictError al next", async () => {
+    mockSvc.approveProposal.mockRejectedValueOnce(new ConflictError("Estado"));
+    await approveProposal({ params: { id: "order-1" } } as unknown as Request, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.any(ConflictError));
+  });
+});
+
+describe("replenishmentController.simulateDemand", () => {
+  it("retorna simulación", async () => {
+    mockSvc.simulateDemand.mockResolvedValueOnce({ sku: "SKU-001", stockDisponible: 10 } as any);
+    const res = mockRes();
+    await simulateDemand({ body: { sku: "SKU-001", locationId: "loc-1" } } as Request, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("propaga error al next", async () => {
+    mockSvc.simulateDemand.mockRejectedValueOnce(new NotFoundError("SKU"));
+    await simulateDemand({ body: {} } as Request, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
   });
 });

@@ -9,7 +9,7 @@ export interface Supplier {
   createdAt: string;
 }
 
-export type ReplenishmentStatus = "PENDING" | "ORDERED" | "RECEIVED" | "CANCELLED";
+export type ReplenishmentStatus = "PROPOSED" | "PENDING" | "ORDERED" | "RECEIVED" | "CANCELLED";
 
 export interface ReplenishmentOrder {
   id: string;
@@ -31,4 +31,34 @@ export interface CreateReplenishmentDto {
   locationId: string;
   supplierId: string;
   quantity: number;
+}
+
+export interface ReplenishmentSuggestion {
+  alertId: string;
+  productId: string;
+  sku: string;
+  productName: string;
+  locationId: string;
+  locationName: string;
+  currentStock: number;
+  minStock: number;
+  stockDisponible: number;
+  suggestedQuantity: number;
+  suggestedSupplierId: string | null;
+  suggestedSupplierName: string | null;
+  reason: string;
+}
+
+export interface DemandSimulation {
+  sku: string;
+  productName: string;
+  locationName: string;
+  stockDisponible: number;
+  avgDailyDemand: number;
+  projectedDemandHorizon: number;
+  daysUntilStockout: number | null;
+  stockoutDate: string | null;
+  recommendedOrderQty: number;
+  scenario: string;
+  horizonDays: number;
 }

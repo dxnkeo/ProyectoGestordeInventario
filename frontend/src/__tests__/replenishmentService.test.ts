@@ -5,6 +5,10 @@ import {
   getAllReplenishmentOrders,
   createReplenishmentOrder,
   updateReplenishmentOrderStatus,
+  getReplenishmentSuggestions,
+  createReplenishmentProposal,
+  approveReplenishmentProposal,
+  simulateDemand,
 } from '../services/replenishmentService';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -182,5 +186,135 @@ describe('replenishmentService.updateReplenishmentOrderStatus', () => {
     await expect(updateReplenishmentOrderStatus('order-1', 'CANCELLED')).rejects.toThrow(
       'Error al actualizar estado de la orden.'
     );
+  });
+});
+
+// ─── getReplenishmentSuggestions ─────────────────────────────────────────────
+
+describe('replenishmentService.getReplenishmentSuggestions', () => {
+  it('retorna sugerencias de reposición', async () => {
+    const mockSuggestion = { alertId: 'a1', sku: 'SKU-001', suggestedQuantity: 20 };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [mockSuggestion] }),
+    } as Response);
+
+    const result = await getReplenishmentSuggestions();
+    expect(fetch).toHaveBeenCalledWith('http://localhost:3000/api/v1/replenishment/suggestions');
+    expect(result).toEqual([mockSuggestion]);
+  });
+
+  it('lanza Error cuando la respuesta no es ok', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false } as Response);
+    await expect(getReplenishmentSuggestions()).rejects.toThrow('Error al obtener sugerencias.');
+  });
+});
+
+// ─── createReplenishmentProposal ─────────────────────────────────────────────
+
+describe('replenishmentService.createReplenishmentProposal', () => {
+  const dto = { productId: 'prod-1', locationId: 'loc-1', supplierId: 'sup-1', quantity: 30 };
+
+  it('crea propuesta y la retorna', async () => {
+    const proposal = { ...mockOrder, status: 'PROPOSED' as const };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: proposal }),
+    } as Response);
+
+    const result = await createReplenishmentProposal(dto);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/v1/replenishment/proposals',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(dto) })
+    );
+    expect(result).toEqual(proposal);
+  });
+
+  it('lanza Error con mensaje del servidor', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: 'Proveedor inválido.' }),
+    } as Response);
+    await expect(createReplenishmentProposal(dto)).rejects.toThrow('Proveedor inválido.');
+  });
+
+  it('usa mensaje genérico si el servidor no devuelve message', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => { throw new Error('parse fail'); },
+    } as Response);
+    await expect(createReplenishmentProposal(dto)).rejects.toThrow('Error al crear propuesta.');
+  });
+});
+
+// ─── approveReplenishmentProposal ────────────────────────────────────────────
+
+describe('replenishmentService.approveReplenishmentProposal', () => {
+  it('aprueba propuesta y retorna orden', async () => {
+    const approved = { ...mockOrder, status: 'ORDERED' as const };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: approved }),
+    } as Response);
+
+    const result = await approveReplenishmentProposal('order-1');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/v1/replenishment/proposals/order-1/approve',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    expect(result).toEqual(approved);
+  });
+
+  it('lanza Error cuando la respuesta no es ok', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: 'No es propuesta.' }),
+    } as Response);
+    await expect(approveReplenishmentProposal('order-1')).rejects.toThrow('No es propuesta.');
+  });
+
+  it('usa mensaje genérico si falla el parse del error', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => { throw new Error('parse fail'); },
+    } as Response);
+    await expect(approveReplenishmentProposal('order-1')).rejects.toThrow('Error al aprobar propuesta.');
+  });
+});
+
+// ─── simulateDemand ───────────────────────────────────────────────────────────
+
+describe('replenishmentService.simulateDemand', () => {
+  const dto = { sku: 'SKU-001', locationId: 'loc-1', horizonDays: 30, scenario: 'normal' as const };
+  const mockSim = { sku: 'SKU-001', stockDisponible: 15, recommendedOrderQty: 25 };
+
+  it('ejecuta simulación y retorna resultado', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: mockSim }),
+    } as Response);
+
+    const result = await simulateDemand(dto);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/v1/replenishment/simulate',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(dto) })
+    );
+    expect(result).toEqual(mockSim);
+  });
+
+  it('lanza Error con mensaje del servidor', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: 'SKU no encontrado.' }),
+    } as Response);
+    await expect(simulateDemand(dto)).rejects.toThrow('SKU no encontrado.');
+  });
+
+  it('usa mensaje genérico si falla el parse del error', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => { throw new Error('parse fail'); },
+    } as Response);
+    await expect(simulateDemand(dto)).rejects.toThrow('Error en simulación de demanda.');
   });
 });

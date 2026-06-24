@@ -204,3 +204,95 @@ describe("stockService.suggestSourceLocation", () => {
     expect(result).toHaveLength(0);
   });
 });
+
+// ── getStockBySku / suggestSourceLocationBySku ─────────────────
+
+describe("stockService.getStockBySku", () => {
+  it("lanza AppError 404 si el SKU no existe", async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce(null);
+    await expect(stockService.getStockBySku("NOPE")).rejects.toThrow(AppError);
+  });
+
+  it("retorna stock por ubicación con reservas descontadas", async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce(mockProduct as any);
+    prismaMock.stock.findMany.mockResolvedValueOnce([
+      {
+        locationId: "loc-1",
+        quantity: 50,
+        location: {
+          id: "loc-1",
+          name: "Bodega A",
+          type: "bodega",
+          dispatchStart: "8:00",
+          dispatchEnd: "18:00",
+        },
+      },
+    ] as any);
+    (prismaMock.reservation.groupBy as jest.MockedFunction<any>).mockResolvedValueOnce([
+      { sku: "SKU-001", locationId: "loc-1", _sum: { quantity: 5 } },
+    ]);
+
+    const result = await stockService.getStockBySku("sku-001");
+    expect(result).toHaveLength(1);
+    expect(result[0].sku).toBe("SKU-001");
+    expect(result[0].stockDisponible).toBe(45);
+  });
+});
+
+describe("stockService.suggestSourceLocationBySku", () => {
+  it("lanza AppError 404 si el SKU no existe", async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce(null);
+    await expect(stockService.suggestSourceLocationBySku("NOPE", 1)).rejects.toThrow(AppError);
+  });
+});
+
+describe("stockService.getStockBySkuAndLocation", () => {
+  it("lanza AppError 404 si el SKU no existe", async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce(null);
+    await expect(stockService.getStockBySkuAndLocation("NOPE", "loc-1")).rejects.toThrow(AppError);
+  });
+
+  it("lanza AppError 404 si la ubicación no existe", async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce(mockProduct as any);
+    prismaMock.location.findUnique.mockResolvedValueOnce(null);
+    await expect(stockService.getStockBySkuAndLocation("SKU-001", "no-existe")).rejects.toThrow(AppError);
+  });
+
+  it("retorna stock con reservas descontadas para SKU y ubicación", async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce(mockProduct as any);
+    prismaMock.location.findUnique.mockResolvedValueOnce({
+      id: "loc-1",
+      name: "Bodega A",
+      type: "WAREHOUSE",
+      dispatchStart: "08:00",
+      dispatchEnd: "18:00",
+    } as any);
+    prismaMock.stock.findUnique.mockResolvedValueOnce({ quantity: 50 } as any);
+    (prismaMock.reservation.groupBy as jest.MockedFunction<any>).mockResolvedValueOnce([
+      { sku: "SKU-001", locationId: "loc-1", _sum: { quantity: 8 } },
+    ]);
+
+    const result = await stockService.getStockBySkuAndLocation("sku-001", "loc-1");
+    expect(result.sku).toBe("SKU-001");
+    expect(result.quantity).toBe(50);
+    expect(result.reserved).toBe(8);
+    expect(result.stockDisponible).toBe(42);
+  });
+
+  it("usa quantity 0 si no hay registro de stock", async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce(mockProduct as any);
+    prismaMock.location.findUnique.mockResolvedValueOnce({
+      id: "loc-1",
+      name: "Bodega A",
+      type: "WAREHOUSE",
+      dispatchStart: "08:00",
+      dispatchEnd: "18:00",
+    } as any);
+    prismaMock.stock.findUnique.mockResolvedValueOnce(null);
+    (prismaMock.reservation.groupBy as jest.MockedFunction<any>).mockResolvedValueOnce([]);
+
+    const result = await stockService.getStockBySkuAndLocation("SKU-001", "loc-1");
+    expect(result.quantity).toBe(0);
+    expect(result.stockDisponible).toBe(0);
+  });
+});

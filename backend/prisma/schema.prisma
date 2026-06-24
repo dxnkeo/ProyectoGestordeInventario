@@ -33,6 +33,7 @@ model Location {
   orderItems          OrderItem[]
   stockAlerts         StockAlert[]
   replenishmentOrders ReplenishmentOrder[]
+  physicalCounts      PhysicalCount[]
 
   @@map("locations")
 }
@@ -54,6 +55,7 @@ model Product {
   orderItems          OrderItem[]
   stockAlerts         StockAlert[]
   replenishmentOrders ReplenishmentOrder[]
+  physicalCounts      PhysicalCount[]
 
   @@map("products")
 }
@@ -159,7 +161,7 @@ enum ReservationStatus {
 
 model Reservation {
   reservationId Int               @id @default(autoincrement())
-  orderId       Int
+  orderId       String            // UUID v4 del pedido externo (Grupo 3)
   sku           String
   locationId    String
   quantity      Int
@@ -263,11 +265,12 @@ enum AlertStatus {
 // Modelo: Supplier (Proveedor)
 // ============================================================
 model Supplier {
-  id        String   @id @default(uuid())
-  name      String
-  email     String
-  phone     String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  name         String
+  email        String
+  phone        String?
+  leadTimeDays Int      @default(7)
+  createdAt    DateTime @default(now())
 
   replenishmentOrders ReplenishmentOrder[]
   @@map("suppliers")
@@ -294,8 +297,56 @@ model ReplenishmentOrder {
 }
 
 enum ReplenishmentStatus {
+  PROPOSED
   PENDING
   ORDERED
   RECEIVED
   CANCELLED
+}
+
+// ============================================================
+// Modelo: PhysicalCount — conteo físico para conciliación
+// ============================================================
+model PhysicalCount {
+  id         String   @id @default(uuid())
+  productId  String
+  locationId String
+  countedQty Int
+  countedAt  DateTime @default(now())
+  countedBy  String?
+  note       String?
+  period     String   // ej. "2026-06"
+
+  product  Product  @relation(fields: [productId], references: [id])
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@unique([productId, locationId, period])
+  @@map("physical_counts")
+}
+
+// ============================================================
+// Modelo: OutboundEvent — cola outbox para sync con Analítica
+// ============================================================
+enum EventStatus {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+model OutboundEvent {
+  id             String      @id @default(uuid())
+  eventType      String
+  payload        Json
+  status         EventStatus @default(PENDING)
+  attempts       Int         @default(0)
+  maxAttempts    Int         @default(5)
+  nextRetryAt    DateTime    @default(now())
+  lastError      String?
+  idempotencyKey String?     @unique
+  createdAt      DateTime    @default(now())
+  sentAt         DateTime?
+
+  @@index([status, nextRetryAt])
+  @@map("outbound_events")
 }

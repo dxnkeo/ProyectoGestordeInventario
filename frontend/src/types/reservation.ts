@@ -2,7 +2,7 @@ export type ReservationStatus = "ACTIVE" | "RELEASED" | "SOLD" | "EXPIRED";
 
 export interface Reservation {
   reservationId: number;
-  orderId: number;
+  orderId: string;
   sku: string;
   locationId: string;
   quantity: number;
@@ -19,9 +19,9 @@ export interface Reservation {
 }
 
 export interface CreateReservationDto {
-  orderId: number;
+  orderId: string;
   sku: string;
-  locationId: string;
+  locationId?: string;
   quantity: number;
   expiresAt?: string;
 }

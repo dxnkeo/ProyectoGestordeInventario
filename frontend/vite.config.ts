@@ -18,6 +18,8 @@ export default defineConfig({
         'src/services/pickingService.ts',
         'src/services/stockService.ts',
         'src/services/reservationService.ts',
+        'src/services/reconciliationService.ts',
+        'src/services/eventService.ts',
         'src/utils/disableNumberInputWheel.ts',
       ],
       thresholds: {

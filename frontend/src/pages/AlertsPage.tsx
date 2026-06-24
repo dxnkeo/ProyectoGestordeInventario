@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { StockAlert } from "../types/alert";
-import type { Supplier, ReplenishmentOrder } from "../types/replenishment";
+import type { Supplier, ReplenishmentOrder, ReplenishmentSuggestion } from "../types/replenishment";
 import type { Product } from "../types/product";
 import type { Location } from "../types/location";
 import { getAlerts, resolveAlert } from "../services/alertService";
@@ -10,6 +10,10 @@ import {
   createSupplier as apiCreateSupplier,
   getAllReplenishmentOrders,
   createReplenishmentOrder,
+  createReplenishmentProposal,
+  approveReplenishmentProposal,
+  getReplenishmentSuggestions,
+  simulateDemand,
   updateReplenishmentOrderStatus,
 } from "../services/replenishmentService";
 import { getAllLocations } from "../services/locationService";
@@ -29,6 +33,8 @@ export const AlertsPage: React.FC = () => {
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [orderQuantity, setOrderQuantity] = useState(50);
+  const [useProposal, setUseProposal] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
   // ── Formulario proveedor ──────────────────────────────────────
   const [newSupplierName, setNewSupplierName] = useState("");
@@ -59,6 +65,11 @@ export const AlertsPage: React.FC = () => {
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["products"], queryFn: getAllProducts });
   const { data: locations = [] } = useQuery<Location[]>({ queryKey: ["locations"], queryFn: getAllLocations });
 
+  const { data: suggestions = [] } = useQuery<ReplenishmentSuggestion[]>({
+    queryKey: ["replenishment-suggestions"],
+    queryFn: getReplenishmentSuggestions,
+  });
+
   const loading = loadingAlerts || loadingOrders || loadingSuppliers;
 
   // ── Mutations ─────────────────────────────────────────────────
@@ -73,14 +84,37 @@ export const AlertsPage: React.FC = () => {
   });
 
   const createOrderMutation = useMutation({
-    mutationFn: createReplenishmentOrder,
-    onSuccess: () => {
-      showToast("Orden de compra registrada y solicitada al proveedor.", "success");
+    mutationFn: ({ dto, asProposal }: { dto: { productId: string; locationId: string; supplierId: string; quantity: number }; asProposal: boolean }) =>
+      asProposal ? createReplenishmentProposal(dto) : createReplenishmentOrder(dto),
+    onSuccess: (_data, variables) => {
+      showToast(variables.asProposal ? "Propuesta de reposición creada." : "Orden de compra registrada y solicitada al proveedor.", "success");
       setIsOrderModalOpen(false);
+      setUseProposal(false);
       queryClient.invalidateQueries({ queryKey: ["replenishments"] });
       queryClient.invalidateQueries({ queryKey: ["alerts", "PENDING"] });
     },
     onError: () => showToast("Error al procesar la orden.", "error"),
+  });
+
+  const approveProposalMutation = useMutation({
+    mutationFn: approveReplenishmentProposal,
+    onSuccess: () => {
+      showToast("Propuesta aprobada — orden enviada.", "success");
+      queryClient.invalidateQueries({ queryKey: ["replenishments"] });
+    },
+    onError: (e: Error) => showToast(e.message, "error"),
+  });
+
+  const simulateMutation = useMutation({
+    mutationFn: simulateDemand,
+    onSuccess: (data) => {
+      setSimulationResult(
+        `Demanda ~${data.avgDailyDemand}/día · Proyección ${data.horizonDays}d: ${data.projectedDemandHorizon} uds · ` +
+        `Recomendado: ${data.recommendedOrderQty} uds` +
+        (data.daysUntilStockout !== null ? ` · Agotamiento ~${data.daysUntilStockout} días` : "")
+      );
+    },
+    onError: (e: Error) => showToast(e.message, "error"),
   });
 
   const receiveOrderMutation = useMutation({
@@ -118,18 +152,25 @@ export const AlertsPage: React.FC = () => {
     createSupplierMutation.mutate({ name: newSupplierName, email: newSupplierEmail, phone: newSupplierPhone || undefined });
   };
 
-  const openOrderModalForAlert = (alert: StockAlert) => {
+  const openOrderModalForAlert = (alert: StockAlert, asProposal = false) => {
+    const suggestion = suggestions.find((s) => s.alertId === alert.id);
     setSelectedProductId(alert.productId);
     setSelectedLocationId(alert.locationId);
-    if (suppliers.length > 0 && !selectedSupplierId) setSelectedSupplierId(suppliers[0].id);
-    setOrderQuantity(50);
+    setUseProposal(asProposal);
+    if (suggestion?.suggestedSupplierId) setSelectedSupplierId(suggestion.suggestedSupplierId);
+    else if (suppliers.length > 0 && !selectedSupplierId) setSelectedSupplierId(suppliers[0].id);
+    setOrderQuantity(suggestion?.suggestedQuantity ?? 50);
+    setSimulationResult(null);
     setIsOrderModalOpen(true);
   };
 
   const handleCreateOrderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProductId || !selectedLocationId || !selectedSupplierId) { showToast("Faltan datos requeridos.", "warning"); return; }
-    createOrderMutation.mutate({ productId: selectedProductId, locationId: selectedLocationId, supplierId: selectedSupplierId, quantity: orderQuantity });
+    createOrderMutation.mutate({
+      dto: { productId: selectedProductId, locationId: selectedLocationId, supplierId: selectedSupplierId, quantity: orderQuantity },
+      asProposal: useProposal,
+    });
   };
 
   const handleCancelOrder = (id: string) => {
@@ -187,27 +228,39 @@ export const AlertsPage: React.FC = () => {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  {alerts.map((alert) => (
+                  {alerts.map((alert) => {
+                    const suggestion = suggestions.find((s) => s.alertId === alert.id);
+                    return (
                     <div key={alert.id} className="card" role="article" aria-label={`Alerta de stock crítico: ${alert.product?.name}`} style={{ borderLeft: "5px solid #ef4444", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", padding: "16px 20px" }}>
                       <div style={{ flex: 1 }}>
                         <span style={{ fontSize: "0.7rem", background: "#fef2f2", color: "#b91c1c", padding: "3px 8px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase" }}>Stock Crítico</span>
                         <h3 style={{ fontSize: "1.05rem", fontWeight: "bold", margin: "6px 0 2px 0" }}>{alert.product?.name}</h3>
                         <p style={{ fontSize: "0.8rem", color: "#666" }}>SKU: <strong>{alert.product?.sku}</strong> | Ubicación: <strong>{alert.location?.name}</strong></p>
+                        {suggestion && (
+                          <p style={{ fontSize: "0.78rem", color: "#0d9488", marginTop: "4px" }}>
+                            💡 Sugerido: <strong>{suggestion.suggestedQuantity} uds</strong>
+                            {suggestion.suggestedSupplierName ? ` · ${suggestion.suggestedSupplierName}` : ""}
+                          </p>
+                        )}
                       </div>
                       <div style={{ textAlign: "right", paddingRight: "20px" }}>
                         <span style={{ fontSize: "0.85rem", color: "#777", display: "block" }}>Stock Mínimo: {alert.minStock}</span>
                         <span style={{ fontSize: "1.25rem", color: "#b91c1c", fontWeight: "bold" }}>Actual: {alert.currentStock} uds</span>
                       </div>
-                      <div style={{ display: "flex", gap: "10px" }}>
-                        <button onClick={() => openOrderModalForAlert(alert)} className="btn btn-primary" style={{ fontSize: "0.8rem", padding: "8px 16px" }} aria-label={`Reponer stock de ${alert.product?.name}`}>
-                          📦 Reponer Stock
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                        <button onClick={() => openOrderModalForAlert(alert, true)} className="btn btn-primary" style={{ fontSize: "0.8rem", padding: "8px 16px" }}>
+                          💡 Propuesta
+                        </button>
+                        <button onClick={() => openOrderModalForAlert(alert, false)} className="btn btn-secondary" style={{ fontSize: "0.8rem", padding: "8px 16px" }}>
+                          📦 Orden directa
                         </button>
                         <button onClick={() => resolveAlertMutation.mutate(alert.id)} className="btn btn-secondary" style={{ fontSize: "0.8rem", padding: "8px 16px", background: "#f3f4f6" }} aria-label={`Archivar alerta de ${alert.product?.name}`} disabled={resolveAlertMutation.isPending}>
                           Archivar
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -245,12 +298,23 @@ export const AlertsPage: React.FC = () => {
                         <td style={{ padding: "16px" }}>
                           <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "bold", backgroundColor: order.status === "RECEIVED" ? "#d1fae5" : order.status === "ORDERED" ? "#dbeafe" : order.status === "CANCELLED" ? "#fee2e2" : "#f3f4f6", color: order.status === "RECEIVED" ? "#065f46" : order.status === "ORDERED" ? "#1e40af" : order.status === "CANCELLED" ? "#991b1b" : "#374151" }}>
                             {order.status === "ORDERED" && "SOLICITADO"}
+                            {order.status === "PROPOSED" && "PROPUESTA"}
                             {order.status === "RECEIVED" && "RECIBIDO"}
                             {order.status === "CANCELLED" && "CANCELADO"}
                             {order.status === "PENDING" && "PENDIENTE"}
                           </span>
                         </td>
                         <td style={{ padding: "16px" }}>
+                          {order.status === "PROPOSED" && (
+                            <div style={{ display: "flex", gap: "6px" }}>
+                              <button onClick={() => approveProposalMutation.mutate(order.id)} className="btn btn-primary" style={{ padding: "6px 12px", fontSize: "0.75rem" }} disabled={approveProposalMutation.isPending}>
+                                ✓ Aprobar
+                              </button>
+                              <button onClick={() => handleCancelOrder(order.id)} className="btn btn-secondary" style={{ padding: "6px 12px", fontSize: "0.75rem" }} disabled={cancelOrderMutation.isPending}>
+                                Rechazar
+                              </button>
+                            </div>
+                          )}
                           {order.status === "ORDERED" && (
                             <div style={{ display: "flex", gap: "6px" }}>
                               <button onClick={() => receiveOrderMutation.mutate(order.id)} className="btn btn-primary" style={{ padding: "6px 12px", fontSize: "0.75rem" }} aria-label={`Marcar como recibida la orden ${order.id.slice(0, 8)}`} disabled={receiveOrderMutation.isPending}>
@@ -318,7 +382,9 @@ export const AlertsPage: React.FC = () => {
       {isOrderModalOpen && (
         <div role="dialog" aria-modal="true" aria-labelledby="modal-title" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(2px)" }}>
           <div className="card" style={{ width: "100%", maxWidth: "500px", padding: "28px" }}>
-            <h2 id="modal-title" style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "16px" }}>📦 Solicitar Orden de Reposición</h2>
+            <h2 id="modal-title" style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "16px" }}>
+              {useProposal ? "💡 Crear propuesta de reposición" : "📦 Solicitar orden de reposición"}
+            </h2>
             <form onSubmit={handleCreateOrderSubmit}>
               <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: "8px", marginBottom: "18px" }}>
                 <span style={{ fontSize: "0.8rem", color: "#666" }}>Detalles del destino:</span>
@@ -342,10 +408,30 @@ export const AlertsPage: React.FC = () => {
                 <input id="modal-quantity" type="number" className="form-input" min="1" value={orderQuantity} onChange={(e) => setOrderQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} required aria-required="true" />
               </div>
 
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ width: "100%", marginBottom: "12px", fontSize: "0.85rem" }}
+                disabled={simulateMutation.isPending}
+                onClick={() => {
+                  const product = products.find((p) => p.id === selectedProductId);
+                  if (product && selectedLocationId) {
+                    simulateMutation.mutate({ sku: product.sku, locationId: selectedLocationId, horizonDays: 30, scenario: "normal" });
+                  }
+                }}
+              >
+                📈 Simular demanda (30 días)
+              </button>
+              {simulationResult && (
+                <p style={{ fontSize: "0.8rem", color: "#555", background: "#f0fdf4", padding: "10px", borderRadius: "8px", marginBottom: "12px" }}>
+                  {simulationResult}
+                </p>
+              )}
+
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px" }}>
                 <button type="button" onClick={() => setIsOrderModalOpen(false)} className="btn btn-secondary" style={{ background: "#f3f4f6" }}>Cerrar</button>
                 <button type="submit" disabled={createOrderMutation.isPending || suppliers.length === 0} className="btn btn-primary" aria-busy={createOrderMutation.isPending}>
-                  {createOrderMutation.isPending ? "Procesando..." : "Confirmar Orden"}
+                  {createOrderMutation.isPending ? "Procesando..." : useProposal ? "Crear propuesta" : "Confirmar orden"}
                 </button>
               </div>
             </form>

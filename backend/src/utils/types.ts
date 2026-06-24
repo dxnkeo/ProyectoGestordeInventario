@@ -75,9 +75,9 @@ export interface MovementResult {
 
 // ── DTOs de Reserva ──────────────────────────────────────────────
 export interface CreateReservationDto {
-  orderId: number;
+  orderId: string;
   sku: string;
-  locationId: string;
+  locationId?: string;
   quantity: number;
   expiresAt?: string;
 }

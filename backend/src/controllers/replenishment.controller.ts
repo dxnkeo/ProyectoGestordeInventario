@@ -80,3 +80,57 @@ export const updateReplenishmentOrderStatus = async (
     next(error);
   }
 };
+
+export const getSuggestions = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const locationId = _req.query.locationId as string | undefined;
+    const suggestions = await replenishmentService.getReplenishmentSuggestions(locationId);
+    sendSuccess(res, suggestions, `${suggestions.length} sugerencia(s) de reposición.`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createProposal = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const order = await replenishmentService.createProposal(req.body);
+    sendSuccess(res, order, "Propuesta de reposición creada.", 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const approveProposal = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = String(req.params.id);
+    const order = await replenishmentService.approveProposal(id);
+    sendSuccess(res, order, "Propuesta aprobada — orden enviada al proveedor.");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const simulateDemand = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const result = await replenishmentService.simulateDemand(req.body);
+    sendSuccess(res, result, "Simulación de demanda completada.");
+  } catch (error) {
+    next(error);
+  }
+};

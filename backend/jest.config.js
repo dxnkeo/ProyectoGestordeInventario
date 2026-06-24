@@ -21,6 +21,10 @@ module.exports = {
     "src/services/stock.service.ts",
     "src/controllers/alert.controller.ts",
     "src/controllers/replenishment.controller.ts",
+    "src/services/reconciliation.service.ts",
+    "src/services/event.service.ts",
+    "src/controllers/reconciliation.controller.ts",
+    "src/controllers/event.controller.ts",
     "src/utils/errors.ts",
   ],
   coverageThreshold: {

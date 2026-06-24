@@ -7,6 +7,11 @@ import app from "./app";
 import { config } from "./config/config";
 import { logger } from "./config/logger";
 import prisma from "./prisma/client";
+import {
+  startReservationExpiryJob,
+  stopReservationExpiryJob,
+} from "./jobs/reservationExpiry.job";
+import { startEventWorker, stopEventWorker } from "./jobs/eventWorker.job";
 
 // Validar variables de entorno antes de arrancar
 validateEnv();
@@ -24,6 +29,8 @@ const startServer = async (): Promise<void> => {
         api: `http://localhost:${PORT}/api/v1`,
         docs: `http://localhost:${PORT}/api-docs`,
       });
+      startReservationExpiryJob();
+      startEventWorker();
     });
   } catch (error) {
     logger.error("Error al iniciar el servidor", { error });
@@ -34,6 +41,8 @@ const startServer = async (): Promise<void> => {
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   logger.info(`Señal ${signal} recibida. Cerrando servidor...`);
+  stopReservationExpiryJob();
+  stopEventWorker();
   await prisma.$disconnect();
   logger.info("Conexión a la BD cerrada.");
   process.exit(0);
