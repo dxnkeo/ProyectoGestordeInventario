@@ -62,6 +62,64 @@ describe("eventService.emit helpers", () => {
     );
   });
 
+  it("emitStockMovement incluye unit_price, category y unit en el payload (prioridad 1+4)", async () => {
+    await eventService.emitStockMovement({
+      eventType: "stock_received",
+      sku: "SKU-1",
+      locationId: "loc-1",
+      quantity: 50,
+      unitPrice: 12500.00,
+      category: "Ferretería",
+      unit: "unidad",
+      movementId: "mov-2",
+    });
+    expect(prismaMock.outboundEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: expect.objectContaining({
+            unit_price: 12500.00,
+            category: "Ferretería",
+            unit: "unidad",
+          }),
+        }),
+      })
+    );
+  });
+
+  it("emitStockMovement incluye order_id en stock_dispatched (prioridad 2 — reserved_stock)", async () => {
+    await eventService.emitStockMovement({
+      eventType: "stock_dispatched",
+      sku: "SKU-1",
+      locationId: "loc-1",
+      quantity: 5,
+      movementId: "mov-3",
+      orderId: "order-uuid-123",
+    });
+    expect(prismaMock.outboundEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: expect.objectContaining({
+            order_id: "order-uuid-123",
+          }),
+        }),
+      })
+    );
+  });
+
+  it("emitStockMovement no incluye campos opcionales undefined en el payload", async () => {
+    await eventService.emitStockMovement({
+      eventType: "stock_received",
+      sku: "SKU-1",
+      locationId: "loc-1",
+      quantity: 10,
+    });
+    const call = prismaMock.outboundEvent.create.mock.calls[0][0];
+    const payload = call.data.payload as Record<string, unknown>;
+    expect(payload).not.toHaveProperty("unit_price");
+    expect(payload).not.toHaveProperty("category");
+    expect(payload).not.toHaveProperty("order_id");
+  });
+
   it("emitStockReserved encola evento stock_reserved", async () => {
     await eventService.emitStockReserved({
       reservationId: 42,
@@ -101,6 +159,45 @@ describe("eventService.emit helpers", () => {
         data: expect.objectContaining({ eventType: "critical_threshold_reached" }),
       })
     );
+  });
+
+  it("emitCriticalThreshold incluye threshold_limite y city (prioridad 3 — metadatos ubicación)", async () => {
+    await eventService.emitCriticalThreshold({
+      alertId: "alert-2",
+      sku: "SKU-2",
+      locationId: "loc-2",
+      currentStock: 3,
+      minStock: 20,
+      thresholdLimite: 20,
+      locationName: "Bodega Norte",
+      locationType: "WAREHOUSE",
+      city: "Santiago",
+    });
+    expect(prismaMock.outboundEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: expect.objectContaining({
+            threshold_limite: 20,
+            city: "Santiago",
+            location_name: "Bodega Norte",
+            location_type: "WAREHOUSE",
+          }),
+        }),
+      })
+    );
+  });
+
+  it("emitCriticalThreshold usa minStock como threshold_limite si no se pasa thresholdLimite", async () => {
+    await eventService.emitCriticalThreshold({
+      alertId: "alert-3",
+      sku: "SKU-3",
+      locationId: "loc-3",
+      currentStock: 1,
+      minStock: 15,
+    });
+    const call = prismaMock.outboundEvent.create.mock.calls[0][0];
+    const payload = call.data.payload as Record<string, unknown>;
+    expect(payload.threshold_limite).toBe(15);
   });
 });
 

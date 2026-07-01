@@ -1,9 +1,11 @@
 # Coordinación integración Inventario (Grupo 5) → Analítica (Grupo 9)
 
-> **Fase 0 — Alineación de contrato**  
-> Documento para enviar al equipo Analítica antes de implementar la emisión de eventos.
+> **Estado actual: ✅ CONTRATO CERRADO — pendiente ajuste de autenticación**
+> Última actualización: 2026-06-30
 
 ---
+
+## ✅ Respuestas recibidas del Grupo 9 — Contrato acordado
 
 Hola equipo,
 
@@ -19,6 +21,47 @@ Nuestro sistema ya cubre stock, movimientos, alertas y reservas. Lo que nos falt
 - ¿Requieren **autenticación**? Si sí: ¿header, API key, otro?
 - ¿Hay un **entorno de pruebas/staging** donde podamos enviar eventos sin afectar producción?
 - ¿Cuál es el **timeout** recomendado y qué hacen si un evento falla? (¿reintentos, cola, o solo log?)
+
+### ✅ Respuesta recibida
+
+| Pregunta | Respuesta |
+|----------|-----------|
+| **URL base de eventos** | `https://analisis-proyecto-ti.onrender.com/v1/events` (POST) |
+| **Autenticación para eventos** | No requerida para POST /events |
+| **Autenticación para consultar endpoints** | Sí — requiere token **Keycloak** (ver §Keycloak abajo) |
+| **Entorno de pruebas** | La URL es producción/staging compartida. Coordinar si se necesita entorno aislado |
+| **Reintentos / Timeout** | Nuestro outbox worker ya maneja: backoff exponencial, no reintenta en 4xx, sí reintenta en 5xx o falla de red |
+
+#### 🔑 Keycloak — Obtener token para consultar endpoints del Grupo 9
+
+```bash
+curl -X POST "https://underarm-those-stardust.ngrok-free.dev/realms/sistema-centralizado/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password" \
+  -d "client_id=p9" \
+  -d "username=inventario@ucn.cl" \
+  -d "password=Inv123!"
+```
+
+Del response, usar el valor de `access_token` como `Authorization: Bearer <access_token>`.
+
+#### 📡 Endpoints del Grupo 9 que podemos consumir
+
+| Endpoint | Descripción | Auth |
+|----------|-------------|------|
+| `GET /v1/inventory/kpis` | KPIs generales | Bearer token |
+| `GET /v1/inventory/snapshot` | Snapshot de stock por ubicación | Bearer token |
+| `GET /v1/inventory/products/thresholds?below_threshold=true` | Productos bajo umbral crítico | Bearer token |
+| `GET /v1/inventory/stock-status` | Estado del stock (NORMAL / CRITICAL / OUT_OF_STOCK) | Bearer token |
+| `GET /v1/inventory/locations/catalog` | Catálogo de ubicaciones | Bearer token |
+
+Base URL: `https://analisis-proyecto-ti.onrender.com`
+
+#### ⚙️ Variable de entorno requerida
+
+```env
+ANALYTICS_EVENTS_URL=https://analisis-proyecto-ti.onrender.com/v1/events
+```
 
 ---
 
@@ -36,36 +79,74 @@ Confirmamos que usaremos esta estructura general:
 }
 ```
 
-Necesitamos que nos confirmen o compartan un **esquema por cada `event_type`** que ya aceptan:
+### ✅ Respuesta recibida
 
-| `event_type` |
-|---|
-| `stock_received` |
-| `stock_reserved` |
-| `stock_dispatched` |
-| `stock_adjusted` |
-| `stock_transfer_initiated` |
-| `stock_out_error` |
-| `critical_threshold_reached` |
+El validador acepta campos adicionales en el `payload` sin romper la validación. Los IDs deben ser exactamente `sku_id` y `location_id`.
 
-En concreto:
+#### Campos enriquecidos acordados por event_type
 
-- ¿Qué campos son **obligatorios** vs opcionales en cada `payload`?
-- ¿Aceptan **campos adicionales** sin romper la validación? (ej. `product_name`, `category`, `unit_price`)
-- ¿Los IDs deben ser exactamente `sku_id` y `location_id` como en su ejemplo, o aceptan otros nombres?
+**`stock_received`, `stock_dispatched`, `stock_adjusted`, `stock_transfer_initiated`:**
+```json
+{
+  "sku_id": "SKU-PROD-001",
+  "location_id": "LOC-001",
+  "quantity": 50,
+  "unit_price": 12500.00,
+  "product_name": "Tornillo M8",
+  "category": "Ferretería",
+  "unit": "unidad"
+}
+```
+
+**`stock_reserved`:**
+```json
+{
+  "sku_id": "SKU-PROD-001",
+  "location_id": "LOC-001",
+  "quantity": 5,
+  "order_id": "ORD-123",
+  "reservation_id": 42
+}
+```
+
+**`stock_released` (cancelación de reserva):**
+```json
+{
+  "sku_id": "SKU-PROD-001",
+  "location_id": "LOC-001",
+  "quantity": 5,
+  "reservation_id": 42,
+  "reason": "RELEASED"
+}
+```
+
+**`critical_threshold_reached`:**
+```json
+{
+  "sku_id": "SKU-PROD-001",
+  "location_id": "LOC-001",
+  "current_stock": 5,
+  "threshold_limite": 20,
+  "location_name": "Bodega Norte",
+  "location_type": "WAREHOUSE",
+  "city": "Santiago"
+}
+```
 
 ---
 
 ## 3. Precio unitario (`total_stock_value`)
-
-Para desbloquear `total_stock_value`, podemos entregar `unit_price` de dos formas:
 
 | Opción | Descripción |
 |--------|-------------|
 | **A** | Incluirlo en los eventos de stock (recomendado por ustedes) |
 | **B** | Exponer un catálogo/endpoint con precios y que ustedes lo consulten |
 
-¿Cuál prefieren? Si es la opción A, ¿en qué eventos debe ir `unit_price`? (¿solo entradas, o también reservas/despachos?)
+### ✅ Respuesta recibida: **Opción A**
+
+Incluir `unit_price` en los eventos de stock. Mínimo en `stock_received`. Si también está en reservas/despachos, está bien — el Grupo 9 guarda el último valor conocido.
+
+> **Pendiente nuestro:** agregar `unit_price` al emitir `emitStockMovement()` en `event.service.ts`.
 
 ---
 
@@ -73,39 +154,33 @@ Para desbloquear `total_stock_value`, podemos entregar `unit_price` de dos forma
 
 Hoy manejamos reservas con estados: `ACTIVE` → `RELEASED` (cancelación) o `SOLD` (pedido completado).
 
-Para que `reserved_stock` deje de ser placeholder, necesitamos saber:
+### ✅ Respuesta recibida — Flujo validado
 
-- ¿Con el evento `stock_reserved` basta para **sumar** reservas activas?
-- ¿Cómo debemos notificar que una reserva **deja de estar activa**?
-  - ¿Existe ya un tipo como `stock_released` / `reservation_cancelled`?
-  - ¿O deben agregar uno nuevo en su receptor?
-- Al pasar a `SOLD` (despacho), ¿cuentan eso como fin de reserva + `stock_dispatched`, o solo uno de los dos?
+| Acción | Evento a emitir |
+|--------|-----------------|
+| Crear reserva | `stock_reserved` (con `reservation_id` + `order_id`) |
+| Cancelar pedido | `stock_released` (semánticamente más claro que `stock_dispatched`) |
+| Completar pedido | `stock_dispatched` con `order_id` (el mismo del `reserved`) |
 
-**Flujo de ejemplo que queremos validar:**
-
-1. Crear reserva → `stock_reserved` (+5 unidades)
-2. Cancelar pedido → ¿qué evento enviamos? (-5 reservadas)
-3. Completar pedido → ¿`stock_dispatched` y/o otro evento?
+Lógica del Grupo 9: restan de `reserved_stock` cualquier evento `stock_dispatched` o `stock_released` que tenga `order_id` no nulo.
 
 ---
 
 ## 5. Metadatos de ubicación (`critical_threshold_reached`)
 
-Para enriquecer ubicaciones en su dashboard, podemos incluir en el evento:
+### ✅ Respuesta recibida
 
-- `location_name`
-- `location_type`
-- `city`
+Los campos `location_name`, `location_type`, `city` y `address` son aceptados.
 
-¿Esos nombres de campo les sirven? ¿Necesitan también `address` u otro dato?
+- Preferencia: recibirlos en cada `critical_threshold_reached` (no hace falta endpoint separado)
+- El Grupo 9 hace **upsert**: enviarlo una vez queda guardado
+- `location_type` acepta: `WAREHOUSE`, `DISTRIBUTION_CENTER`, `RETAIL_POINT`
 
-¿Prefieren recibir esto **solo en `critical_threshold_reached`**, o también en un catálogo de ubicaciones (`GET /locations/catalog`)?
+> **Pendiente nuestro:** agregar `city` y `threshold_limite` al `emitCriticalThreshold()` en `event.service.ts`.
 
 ---
 
 ## 6. Catálogo de productos
-
-Para dejar de ver `product_name = sku_id` y `category = "Sin categoría"`, podemos entregar:
 
 | Opción | Descripción |
 |--------|-------------|
@@ -113,31 +188,33 @@ Para dejar de ver `product_name = sku_id` y `category = "Sin categoría"`, podem
 | **B** | Esos campos en cada evento de stock |
 | **C** | Ambos |
 
-¿Cuál les resulta más práctico para su arquitectura actual?
+### ✅ Respuesta recibida: **Opción B**
+
+Incluir `product_name`, `category`, `unit` en cada `stock_received`. El Grupo 9 guarda el último valor conocido.
+
+> **Pendiente nuestro:** agregar `category` y `unit` al payload de `emitStockMovement()`.
 
 ---
 
 ## 7. Alcance y prioridades
 
-Según su documento, el orden de prioridad sería:
+### ✅ Orden confirmado
 
-1. `unit_price` → desbloquea `total_stock_value`
-2. Ciclo de reservas → desbloquea `reserved_stock`
-3. Metadatos de ubicación en alertas críticas
-4. Catálogo de productos
-
-¿Siguen siendo estas las prioridades? ¿Hay alguna fecha límite o demo donde necesiten tener algo funcionando antes?
+1. `unit_price` en `stock_received` → desbloquea `total_stock_value`
+2. `order_id` en `stock_dispatched` → desbloquea `reserved_stock`
+3. Metadata de ubicación en `critical_threshold_reached` (`city`, `threshold_limite`)
+4. `product_name`, `category`, `unit` en eventos de stock
 
 ---
 
 ## 8. Validación conjunta
 
-Cuando tengamos el primer entorno conectado, proponemos validar juntos:
+Cuando tengamos el primer entorno conectado, validar juntos:
 
-- [ ] `GET /inventory/kpis` → `total_stock_value` ≠ 0
-- [ ] `GET /inventory/snapshot` → `reserved_stock` correcto tras crear/cancelar reserva
-- [ ] `GET /products/thresholds` → nombres y categorías reales
-- [ ] `GET /locations/catalog` → `city` y `location_type` poblados
+- [ ] `GET /v1/inventory/kpis` → `total_stock_value` ≠ 0
+- [ ] `GET /v1/inventory/snapshot` → `reserved_stock` correcto tras crear/cancelar reserva
+- [ ] `GET /v1/inventory/products/thresholds` → nombres y categorías reales
+- [ ] `GET /v1/inventory/locations/catalog` → `city` y `location_type` poblados
 
 ¿Les parece bien una sesión corta de prueba cuando tengamos el emisor de eventos listo?
 
@@ -145,5 +222,5 @@ Cuando tengamos el primer entorno conectado, proponemos validar juntos:
 
 Quedamos atentos a sus respuestas. Con esto cerrado podemos empezar implementación sin ambigüedades.
 
-Saludos,  
+Saludos,
 **Equipo Inventario — Grupo 5**

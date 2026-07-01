@@ -147,10 +147,17 @@ export const emitStockMovement = async (params: {
   sku: string;
   locationId: string;
   quantity: number;
+  /** Desbloquea total_stock_value en Grupo 9 (prioridad 1) */
+  unitPrice?: number;
+  /** Desbloquea catálogo de productos en Grupo 9 (prioridad 4) */
+  category?: string;
+  unit?: string;
   productName?: string;
   locationName?: string;
   locationType?: string;
   movementId?: string;
+  /** Desbloquea reserved_stock en Grupo 9 (prioridad 2) — requerido en stock_dispatched */
+  orderId?: string;
 }) => {
   await enqueueEvent(
     params.eventType,
@@ -158,10 +165,14 @@ export const emitStockMovement = async (params: {
       sku_id: params.sku,
       location_id: params.locationId,
       quantity: params.quantity,
-      product_name: params.productName,
-      location_name: params.locationName,
-      location_type: params.locationType,
-      movement_id: params.movementId,
+      ...(params.unitPrice !== undefined && { unit_price: params.unitPrice }),
+      ...(params.category !== undefined && { category: params.category }),
+      ...(params.unit !== undefined && { unit: params.unit }),
+      ...(params.productName !== undefined && { product_name: params.productName }),
+      ...(params.locationName !== undefined && { location_name: params.locationName }),
+      ...(params.locationType !== undefined && { location_type: params.locationType }),
+      ...(params.movementId !== undefined && { movement_id: params.movementId }),
+      ...(params.orderId !== undefined && { order_id: params.orderId }),
     },
     params.movementId ? `${params.eventType}:${params.movementId}` : undefined
   );
@@ -216,6 +227,10 @@ export const emitCriticalThreshold = async (params: {
   productName?: string;
   locationName?: string;
   locationType?: string;
+  /** Umbral crítico en unidades — desbloquea ubicaciones en dashboard Grupo 9 (prioridad 3) */
+  thresholdLimite?: number;
+  /** Ciudad de la ubicación — desbloquea mapa geográfico en Grupo 9 (prioridad 3) */
+  city?: string;
 }) => {
   await enqueueEvent(
     "critical_threshold_reached",
@@ -223,10 +238,11 @@ export const emitCriticalThreshold = async (params: {
       sku_id: params.sku,
       location_id: params.locationId,
       current_stock: params.currentStock,
-      min_stock: params.minStock,
-      product_name: params.productName,
-      location_name: params.locationName,
-      location_type: params.locationType,
+      threshold_limite: params.thresholdLimite ?? params.minStock,
+      ...(params.productName !== undefined && { product_name: params.productName }),
+      ...(params.locationName !== undefined && { location_name: params.locationName }),
+      ...(params.locationType !== undefined && { location_type: params.locationType }),
+      ...(params.city !== undefined && { city: params.city }),
       alert_id: params.alertId,
     },
     `critical_threshold:${params.alertId}`

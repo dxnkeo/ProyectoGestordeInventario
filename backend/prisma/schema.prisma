@@ -20,6 +20,7 @@ model Location {
   name      String
   type      String   // Ej: "bodega", "tienda", "almacen"
   capacity  Int?     // Capacidad máxima opcional (unidades)
+  city      String?  // Ciudad — requerido por Grupo 9 para metadatos de ubicación
   createdAt DateTime @default(now())
   dispatchStart    String @default("8:00")
   dispatchEnd      String @default("18:00")
@@ -47,6 +48,9 @@ model Product {
   name      String
   sku       String   @unique // Código único del producto
   minStock  Int      @default(5) // Umbral de stock crítico
+  price     Float?   // Precio unitario — desbloquea total_stock_value en Grupo 9
+  category  String?  // Categoría — desbloquea catálogo de productos en Grupo 9
+  unit      String?  // Unidad de medida (ej: "unidad", "kg") — requerido por Grupo 9
   createdAt DateTime @default(now())
 
   // Relaciones

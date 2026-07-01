@@ -182,6 +182,9 @@ export const createMovement = async (
     sku: product.sku,
     locationId: dto.locationId,
     quantity: dto.quantity,
+    unitPrice: product.price ?? undefined,
+    category: product.category ?? undefined,
+    unit: product.unit ?? undefined,
     productName: product.name,
     locationName: location.name,
     locationType: location.type,
@@ -195,9 +198,11 @@ export const createMovement = async (
       locationId: dto.locationId,
       currentStock: result.newQuantity,
       minStock: product.minStock,
+      thresholdLimite: product.minStock,
       productName: product.name,
       locationName: location.name,
       locationType: location.type,
+      city: location.city ?? undefined,
     });
   }
 
@@ -402,6 +407,9 @@ export const createTransfer = async (dto: {
       sku: product.sku,
       locationId: dto.sourceLocationId,
       quantity: dto.quantity,
+      unitPrice: product.price ?? undefined,
+      category: product.category ?? undefined,
+      unit: product.unit ?? undefined,
       productName: product.name,
       locationName: sourceLoc.name,
       locationType: sourceLoc.type,

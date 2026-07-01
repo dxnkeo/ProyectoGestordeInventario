@@ -469,9 +469,14 @@ export const confirmDelivery = async (
     sku: product.sku,
     locationId: reservation.locationId,
     quantity: reservation.quantity,
+    unitPrice: product.price ?? undefined,
+    category: product.category ?? undefined,
+    unit: product.unit ?? undefined,
     productName: product.name,
     locationName: reservation.location.name,
     movementId: result.movement.id,
+    // order_id requerido por Grupo 9 para desbloquear reserved_stock (prioridad 2)
+    orderId: reservation.orderId ?? undefined,
   });
 
   return {
