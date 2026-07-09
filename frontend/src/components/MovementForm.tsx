@@ -65,7 +65,7 @@ export const MovementForm = () => {
     setSuccess(false);
 
     if (!formData.productId || !formData.locationId) {
-      setError("Debes seleccionar un producto y una ubicación.");
+      setError("Debes seleccionar un insumo médico y una ubicación.");
       return;
     }
 
@@ -153,7 +153,7 @@ export const MovementForm = () => {
           {/* Producto */}
           <div className="form-group">
             <label htmlFor="productId" className="form-label">
-              Producto <span className="required">*</span>
+              Insumo Médico <span className="required">*</span>
             </label>
             <div className="select-wrapper">
               <select
@@ -164,7 +164,7 @@ export const MovementForm = () => {
                 required
                 className="form-input form-select"
               >
-                <option value="" disabled>Selecciona un producto</option>
+                <option value="" disabled>Selecciona un insumo médico</option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} — SKU: {p.sku}

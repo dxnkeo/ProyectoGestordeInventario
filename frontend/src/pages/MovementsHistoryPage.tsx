@@ -112,7 +112,7 @@ export const MovementsHistoryPage = () => {
         <div>
           <h1 style={{ margin: 0, fontSize: "24px", color: "#1a237e" }}>📋 Historial de Movimientos</h1>
           <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#777" }}>
-            Todas las entradas y salidas de inventario registradas
+            Todas las entradas y salidas de insumos registradas
           </p>
         </div>
         <button
@@ -176,7 +176,7 @@ export const MovementsHistoryPage = () => {
       >
         <div style={{ flex: "2 1 200px" }}>
           <label style={{ display: "block", fontSize: "12px", color: "#555", marginBottom: "4px", fontWeight: 500 }}>
-            Buscar producto / ubicación / nota
+            Buscar insumo médico / ubicación / nota
           </label>
           <input
             type="text"
@@ -258,7 +258,7 @@ export const MovementsHistoryPage = () => {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
             <thead>
               <tr style={{ backgroundColor: "#1a237e", color: "white", textAlign: "left" }}>
-                {["Fecha y hora", "Tipo", "Producto", "SKU", "Ubicación", "Cantidad", "Nota", "Reserva"].map((h) => (
+                {["Fecha y hora", "Tipo", "Insumo Médico", "SKU", "Ubicación", "Cantidad", "Nota", "Reserva"].map((h) => (
                   <th key={h} style={{ padding: "10px 12px", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>

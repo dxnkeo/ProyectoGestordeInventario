@@ -5,6 +5,9 @@
 // Ejecución: npm run db:seed
 // ============================================================
 
+import * as dotenv from "dotenv";
+dotenv.config();
+
 import { PrismaClient, MovementType, ReservationStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -46,17 +49,17 @@ async function main() {
   // ── 2. Crear Productos ───────────────────────────────────────────
   const laptop = await prisma.product.create({
     data: {
-      name: "Laptop Dell Inspiron 15",
-      sku: "DELL-INS-15-001",
+      name: "Kit de Curación Básico",
+      sku: "KIT-CUR-001",
       minStock: 5,
     },
   });
 
   const mouse = await prisma.product.create({
     data: {
-      name: "Mouse Inalámbrico Logitech",
-      sku: "LOG-MOUSE-WL-002",
-      minStock: 10, // Umbral crítico para este mouse
+      name: "Monitor de Presión Arterial",
+      sku: "MON-PRES-002",
+      minStock: 10, // Umbral crítico para este monitor
     },
   });
 
@@ -121,14 +124,14 @@ async function main() {
         locationId: bodegaCentral.id,
         type: MovementType.IN,
         quantity: 50,
-        note: "Compra inicial de laptops",
+        note: "Compra inicial de kits de curación",
       },
       {
         productId: mouse.id,
         locationId: bodegaCentral.id,
         type: MovementType.IN,
         quantity: 150,
-        note: "Compra inicial de mouses",
+        note: "Compra inicial de monitores de presión",
       },
       {
         productId: laptop.id,
@@ -142,7 +145,7 @@ async function main() {
         locationId: tiendaNorte.id,
         type: MovementType.IN,
         quantity: 3,
-        note: "Transferencia de mouses a tienda norte",
+        note: "Transferencia de monitores a tienda norte",
       },
     ],
   });
@@ -178,16 +181,16 @@ async function main() {
   // ── 6. Crear Proveedores ─────────────────────────────────────────
   const provA = await prisma.supplier.create({
     data: {
-      name: "Distribuidora Tech S.A.",
-      email: "contacto@distritech.com",
+      name: "Distribuidora Médica S.A.",
+      email: "contacto@distrimedica.com",
       phone: "+56 9 1234 5678",
     },
   });
 
   const provB = await prisma.supplier.create({
     data: {
-      name: "Importadora LogiGlobal",
-      email: "ventas@logiglobal.com",
+      name: "Insumos Clínicos Global",
+      email: "ventas@clinicglobal.com",
       phone: "+56 2 9876 5432",
     },
   });
@@ -205,7 +208,7 @@ async function main() {
     },
   });
 
-  console.log(`✅ Alerta de stock crítico inicial generada para Mouse en Tienda Norte.`);
+  console.log(`✅ Alerta de stock crítico inicial generada para Monitor en Tienda Norte.`);
 
   // ── 8. Crear Orden de Reposición Inicial ────────────────────────
   await prisma.replenishmentOrder.create({
@@ -218,7 +221,7 @@ async function main() {
     },
   });
 
-  console.log(`✅ Orden de reposición inicial creada para Mouse (50 unidades).`);
+  console.log(`✅ Orden de reposición inicial creada para Monitor (50 unidades).`);
 
   // ── Resumen ──────────────────────────────────────────────────────
   console.log("\n📊 Resumen del seed:");

@@ -22,7 +22,7 @@ function AppLayout() {
         }}
       >
         <span style={{ color: "#90caf9", fontWeight: 700, fontSize: "15px", marginRight: "12px", letterSpacing: "0.3px" }}>
-          🏭 Inventario
+          🏥 Inventario Clínico
         </span>
         {NAV_LINKS.map(({ to, label }) => (
           <NavLink

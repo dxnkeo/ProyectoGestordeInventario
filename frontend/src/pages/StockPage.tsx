@@ -128,7 +128,7 @@ export const StockPage = () => {
       <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
         <input
           type="text"
-          placeholder="Buscar producto o SKU…"
+          placeholder="Buscar insumo clínico o SKU…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -181,7 +181,7 @@ export const StockPage = () => {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
             <thead>
               <tr style={{ backgroundColor: "#1a237e", color: "white", textAlign: "left" }}>
-                {["Producto", "SKU", "Ubicación", "Tipo", "Físico", "Reservado", "Disponible", "Nivel", "Barra"].map((h) => (
+                {["Insumo Médico", "SKU", "Ubicación", "Tipo", "Físico", "Reservado", "Disponible", "Nivel", "Barra"].map((h) => (
                   <th key={h} style={{ padding: "10px 12px", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>

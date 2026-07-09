@@ -14,7 +14,7 @@ export const CreateMovementPage = () => {
           Registrar Movimiento de Stock
         </h1>
         <p style={{ fontSize: "0.9rem", color: "#666", marginTop: "4px" }}>
-          Registra entradas o salidas de productos en el inventario
+          Registra entradas o salidas de insumos médicos en el inventario
         </p>
       </div>
 

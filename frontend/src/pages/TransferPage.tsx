@@ -82,7 +82,7 @@ export const TransferPage: React.FC = () => {
     <div className="page" style={{ padding: "20px" }}>
       <div className="page-header" style={{ marginBottom: "28px" }}>
         <h1 className="page-title" style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", fontWeight: 700 }}>
-          🔄 Transferencia de Inventario
+          🔄 Transferencia de Insumos Médicos
         </h1>
         <p className="page-subtitle" style={{ fontSize: "0.9rem", color: "#666", marginTop: "4px" }}>
           Transfiere stock de forma atómica y segura entre distintas ubicaciones
@@ -108,7 +108,7 @@ export const TransferPage: React.FC = () => {
           <form onSubmit={handleSubmit} aria-label="Formulario de transferencia de inventario">
             <div className="form-group" style={{ marginBottom: "20px" }}>
               <label htmlFor="product-select" className="form-label" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#555", display: "block", marginBottom: "6px" }}>
-                Seleccionar Producto <span aria-hidden="true" style={{ color: "var(--color-teal)" }}>*</span>
+                Seleccionar Insumo Médico <span aria-hidden="true" style={{ color: "var(--color-teal)" }}>*</span>
               </label>
               <select
                 id="product-select"

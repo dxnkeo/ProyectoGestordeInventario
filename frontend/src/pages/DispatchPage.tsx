@@ -139,7 +139,7 @@ export const DispachPage = () => {
           </svg>
           <input
             className="form-input dp-search"
-            placeholder="Buscar pedido, SKU o producto..."
+            placeholder="Buscar pedido, SKU o insumo..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -178,7 +178,7 @@ export const DispachPage = () => {
                 <tr>
                   <th>Pedido</th>
                   <th>SKU</th>
-                  <th>Producto</th>
+                  <th>Insumo Médico</th>
                   <th>Ubicación</th>
                   <th>Cant.</th>
                   <th>Prioridad</th>

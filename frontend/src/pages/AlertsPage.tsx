@@ -224,7 +224,7 @@ export const AlertsPage: React.FC = () => {
                 <div className="card" style={{ textAlign: "center", padding: "40px", color: "#666", background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
                   <span aria-hidden="true" style={{ fontSize: "2rem" }}>✓</span>
                   <p style={{ marginTop: "12px", fontWeight: "bold" }}>¡Excelente! No hay alertas de stock crítico pendientes.</p>
-                  <p style={{ fontSize: "0.85rem", color: "#888", marginTop: "4px" }}>Todos los productos están por encima del umbral mínimo configurado.</p>
+                  <p style={{ fontSize: "0.85rem", color: "#888", marginTop: "4px" }}>Todos los insumos médicos están por encima del umbral mínimo configurado.</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -276,7 +276,7 @@ export const AlertsPage: React.FC = () => {
                   <thead>
                     <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
                       <th scope="col" style={{ padding: "16px" }}>ID Orden</th>
-                      <th scope="col" style={{ padding: "16px" }}>Producto</th>
+                      <th scope="col" style={{ padding: "16px" }}>Insumo Médico</th>
                       <th scope="col" style={{ padding: "16px" }}>Ubicación</th>
                       <th scope="col" style={{ padding: "16px" }}>Proveedor</th>
                       <th scope="col" style={{ padding: "16px" }}>Cantidad</th>

@@ -219,12 +219,12 @@ export const StockUbicationPage = () => {
                 {/* Product breakdown - CORREGIDO PARA TS Y DISEÑO */}
                 {loc.stocks && loc.stocks.length > 0 && (
                   <div className="su-stocks">
-                    <p className="su-stocks-title">Productos</p>
+                    <p className="su-stocks-title">Insumos Clínicos</p>
                     {loc.stocks.map((st) => (
                       <div key={st.product?.id ?? st.productId} className="su-stock-row">
                         <div className="su-product-info">
                           <span className="su-product-name">
-                            {st.product?.name ?? "Producto sin nombre"}
+                            {st.product?.name ?? "Insumo sin nombre"}
                           </span>
                           <code className="su-sku">
                             {st.product?.sku ?? st.productId}
@@ -368,7 +368,7 @@ export const StockUbicationPage = () => {
         }
         .su-stock-row:last-child { border-bottom: none; }
         
-        /* Contenedor de info del producto */
+        /* Contenedor de info del insumo clínico */
         .su-product-info { display: flex; flex-direction: column; gap: 2px; }
         .su-product-name { font-weight: 600; color: var(--color-dark); font-size: 0.88rem; }
         
